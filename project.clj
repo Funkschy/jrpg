@@ -56,4 +56,4 @@
   :jvm-opts ^:replace ~(jvm-opts)
   :main ^:skip-aot com.github.funkschy.jrpg.core
   :repl-options {:init-ns com.github.funkschy.jrpg.core}
-  :profiles {:uberjar {:aot all :jvm-opts ["-Dclojure.compiler.direct-linking=true"]}})
+  :profiles {:uberjar {:aot :all :jvm-opts ["-Dclojure.compiler.direct-linking=true"]}})

@@ -3,10 +3,10 @@
             [clojure.java.io :refer [resource]])
   (:import [com.github.funkschy.jrpg.engine Window]
            [org.lwjgl.opengl GL30]
-           [org.lwjgl.system MemoryStack]
-           [java.nio.file Paths]
+           [org.lwjgl.system MemoryStack MemoryUtil]
            [org.lwjgl.stb STBImage]
-           [org.lwjgl BufferUtils]))
+           [org.lwjgl BufferUtils]
+           [java.nio ByteBuffer]))
 
 (defrecord TextureInfo [texture width height])
 (defrecord Sprite [texture-info src-x src-y src-w src-h])
@@ -18,10 +18,10 @@
   (clear-screen [this])
   (screen-dims [this] "Returns [width height] of the screen")
   (draw-sprite [this sprite dest-x dest-y]
-    [this sprite dest-x dest-y rotation-degrees]
-    [this sprite dest-x dest-y dest-w dest-h]
-    [this sprite dest-x dest-y dest-w dest-h rotation-degrees]
-    "Draw (part of) a texture to the screen at the specified location")
+               [this sprite dest-x dest-y rotation-degrees]
+               [this sprite dest-x dest-y dest-w dest-h]
+               [this sprite dest-x dest-y dest-w dest-h rotation-degrees]
+               "Draw (part of) a texture to the screen at the specified location")
   (create-texture [this img] "Create a texture from an image. Returns a TextureInfo instance"))
 
 (defrecord OpenGLRenderer [^Window window program attribs unifs buffers])
@@ -86,13 +86,18 @@
             h (. stack (mallocInt 1))
             channels (. stack (mallocInt 1))
 
-            path (-> (resource img-res-path) .toURI Paths/get .toAbsolutePath .toString)
-            buf (STBImage/stbi_load ^CharSequence path w h channels 4)
+            cl (. (Thread/currentThread) getContextClassLoader)
+            data (with-open [stream (. cl (getResourceAsStream img-res-path))]
+                   (. stream readAllBytes))
+            buffer (-> (MemoryUtil/memAlloc (count data)) (.put ^bytes data) (.flip))
+            buf (STBImage/stbi_load_from_memory ^ByteBuffer buffer w h channels 4)
+            _ (MemoryUtil/memFree buffer)
 
             width (. w get)
             height (. h get)
 
             texture (GL30/glGenTextures)]
+
         (GL30/glBindTexture GL30/GL_TEXTURE_2D texture)
         ; each component is 1 byte
         (GL30/glPixelStorei GL30/GL_UNPACK_ALIGNMENT 1)
