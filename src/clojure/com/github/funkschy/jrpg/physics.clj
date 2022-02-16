@@ -6,13 +6,7 @@
   (:import [com.github.funkschy.jrpg.components Velocity Transform]))
 
 (defsystem update-position
-           #{Velocity Transform}
-           [ecs _ delta entities]
-           (reduce
-             (fn [ecs e]
-               (->> (s/component-of ecs e Velocity)
-                    ((fn [{:keys [dir speed]}] (scale (normalized dir) (* speed delta))))
-                    (s/update-components ecs e Transform :position add)))
-             ecs
-             entities))
+  [Velocity Transform]
+  [[{:keys [dir speed] :as vel} transform] _ delta]
+  [vel (update transform :position add (scale (normalized dir) (* speed delta)))])
 

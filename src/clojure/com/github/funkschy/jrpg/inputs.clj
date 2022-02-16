@@ -11,13 +11,10 @@
               Action/DOWN  (->Vec2 0 1)})
 
 (defsystem handle-inputs
-           #{Input Velocity}
-           [ecs {:keys [inputs]} delta entities]
-           (reduce
-             (fn [ecs e]
-               (->> (map updates inputs)
-                    (remove nil?)
-                    (reduce add (->Vec2 0 0))
-                    (s/assoc-components ecs e Velocity :dir)))
-             ecs
-             entities))
+  [Input Velocity]
+  [[input velocity] {:keys [inputs]} delta]
+  (->> (map updates inputs)
+       (remove nil?)
+       (reduce add (->Vec2 0 0))
+       (assoc velocity :dir)
+       (vector input)))

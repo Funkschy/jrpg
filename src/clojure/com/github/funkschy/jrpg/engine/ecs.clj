@@ -5,119 +5,92 @@
 (defn create-uuid []
   (UUID/randomUUID))
 
+(defrecord SystemData [system-fn component-types])
+
 (defn create-ecs [now]
   {:last-timestamp     now
-   :entity-components  {}                                   ; entity         -> [set of component instances, set of component types]
-   :component-entities {}                                   ; component-type -> set of entities
+   :entity-components  {} ; entity         -> {component-type -> instance}
+   :component-entities {} ; component-type -> set of entities
    :systems            []})
 
 (defn create-entity []
   (create-uuid))
 
 (defn components [ecs entity]
-  (get-in ecs [:entity-components entity 0]))
+  (vals (get-in ecs [:entity-components entity])))
 
 (defn component-types [ecs entity]
-  (get-in ecs [:entity-components entity 1]))
+  (keys (get-in ecs [:entity-components entity])))
 
 (defn add-entity [ecs entity]
-  (assoc ecs :entity-components (assoc (:entity-components ecs) entity [#{} #{}])))
+  (assoc-in ecs [:entity-components entity] {}))
 
 (defn remove-entity [ecs entity]
   (let [comp-types (component-types ecs entity)]
     (-> ecs
-        (assoc :entity-components (dissoc (:entity-components ecs) entity))
+        (update :entity-components dissoc entity)
         (assoc :component-entities
                (reduce (fn [cs->es component]
-                         (update cs->es component #(disj % entity)))
+                         (update cs->es component disj entity))
                        (ecs :component-entities) comp-types)))))
 
-(defn- update-component-entities [transient-ecs entity component-types]
-  (assoc! transient-ecs
-          :component-entities
-          (persistent!
-            (reduce (fn [cs->es c]
-                      (let [t (type c)]
-                        (assoc! cs->es t (conj (or (cs->es t) #{}) entity))))
-                    (transient (transient-ecs :component-entities))
-                    component-types))))
+(defn- update-component-entities [ecs entity component-types]
+  (assoc ecs
+         :component-entities
+         (persistent!
+           (reduce (fn [cs->es c]
+                     (let [t (type c)]
+                       (assoc! cs->es t (conj (or (cs->es t) #{}) entity))))
+                   (transient (ecs :component-entities))
+                   component-types))))
 
 (defn add-components [ecs entity & components]
-  (let [[old-inst old-types] (get-in ecs [:entity-components entity])
-        new-inst (persistent! (reduce conj! (transient old-inst) components))
-        new-types (persistent! (reduce conj! (transient old-types) (map type components)))]
-    (-> (transient ecs)
-        (assoc! :entity-components (assoc (:entity-components ecs) entity [new-inst new-types]))
-        (update-component-entities entity components)
-        (persistent!))))
-
-(defn remove-component [ecs entity component]
-  (let [new-instances (disj (components ecs entity) component)
-        old-types (component-types ecs entity)
-        new-types (into #{} (map type new-instances))
-        removed-types (difference old-types new-types)]
+  (let [old-comps (get-in ecs [:entity-components entity])
+        new-comps (persistent! (reduce #(assoc! %1 (type %2) %2) (transient old-comps) components))]
     (-> ecs
-        (assoc-in [:entity-components entity 0] new-instances)
-        (assoc-in [:entity-components entity 1] new-types)
-        (assoc :component-entities
-               (reduce (fn [cs->es component-type]
-                         (update cs->es component-type #(disj % entity)))
-                       (:component-entities ecs)
-                       removed-types)))))
+        (assoc-in [:entity-components entity] new-comps)
+        (update-component-entities entity components))))
 
-(defn update-components [ecs entity component-type k f & args]
-  (let [instances (into [] (components ecs entity))]
-    (->> (reduce
-           (fn [new-instances [i component]]
-             (if (= (type component) component-type)
-               (assoc! new-instances i (apply update component k f args))
-               new-instances))
-           (transient instances)
-           (map vector (range) instances))
-         (persistent!)
-         (into #{})
-         (assoc-in ecs [:entity-components entity 0]))))
-
-(defn assoc-components [ecs entity component-type k value]
-  (update-components ecs entity component-type k (constantly value)))
+(defn remove-component [ecs entity component-type]
+  (-> ecs
+      (update-in [:entity-components entity] dissoc component-type)
+      (update-in [:component-entities component-type] disj entity)))
 
 (defn entities-with-components [ecs component-type-set]
-  (let [es->cs (ecs :entity-components)
-        cs->es (ecs :component-entities)]
-    (filter (fn [e] (subset? component-type-set (second (es->cs e))))
-            (reduce intersection (map cs->es component-type-set)))))
+  (reduce intersection
+          (map (ecs :component-entities) component-type-set)))
 
-(defn has-component-of? [ecs entity component-type]
-  (contains? (component-types ecs entity)
-             component-type))
+(defn add-system [ecs system]
+  (update ecs :systems conj system))
 
-(defn component-of [ecs entity component-type]
-  (let [[h & t] (filter #(= (type %) component-type) (components ecs entity))]
-    (assert (nil? t) (str "Multiple components of type " component-type ", use 'components-of'"))
-    h))
+(defn- run-system [ecs data delta {:keys [system-fn component-types]}]
+  (map (fn [e]
+         (let [comps  (get-in ecs [:entity-components e])
+               result (system-fn (vec (map comps component-types)) data delta)]
+           [e component-types result]))
+       (entities-with-components ecs (set component-types))))
 
-(defn get-components [ecs entity & component-types]
-  (map (partial component-of ecs entity) component-types))
+(defn- apply-update [ecs e ty instance]
+  (assoc! ecs :entity-components (assoc-in (:entity-components ecs) [e ty] instance)))
 
-(defn components-of [ecs entity component-type]
-  (filter #(= (type %) component-type) (components ecs entity)))
-
-(defn add-system [ecs system-fn]
-  (update ecs :systems #(conj % system-fn)))
+(defn- apply-updates [ecs updates]
+  (reduce (fn [ecs [e types instances]]
+            (reduce (fn [ecs [ty instance]]
+                      (apply-update ecs e ty instance))
+                    ecs
+                    (map vector types instances)))
+          ecs
+          updates))
 
 (defn run-systems [ecs data timestamp]
-  (let [delta (double (/ (- timestamp (:last-timestamp ecs)) 1000))]
-    (assoc (reduce (fn [ecs system] (system ecs data delta)) ecs (:systems ecs))
-      :last-timestamp
-      timestamp)))
+  (let [delta (double (/ (- timestamp (:last-timestamp ecs)) 1000))
+        updated (reduce (fn [ecs system] (apply-updates ecs (run-system ecs data delta system)))
+                        (transient ecs)
+                        (:systems ecs))]
+    (persistent! (assoc! updated :last-timestamp timestamp))))
 
 (defmacro defsystem [system-name component-types arglist & exprs]
-  (assert (= 4 (count arglist)) "arglist should be [ecs data delta entities]")
+  (assert (= 3 (count arglist)) "arglist should be [components data delta]")
   `(def ~system-name
-     (fn [ecs# data# delta#]
-       (let [entities# (entities-with-components ecs# ~component-types)]
-         (or (and (not-empty entities#)                     ; only execute system, if it's relevant to some entity
-                  ((fn ~arglist ~@exprs) ecs# data# delta# entities#))
-             ; if the function returned nil, we just return the old ecs
-             ecs#)))))
+     (SystemData. (fn ~arglist ~@exprs) ~component-types)))
 

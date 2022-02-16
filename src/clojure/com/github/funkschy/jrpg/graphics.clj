@@ -15,7 +15,7 @@
 (defn current-state-data [state-machine]
   ((:states state-machine) (:current state-machine)))
 
-(defn state-change? [state-machine args]
+(defn state-change? [state-machine & args]
   (not= (next-state state-machine args)
         (:current state-machine)))
 
@@ -27,7 +27,7 @@
              :left  {:animation left-anim :flip-h? true}
              :right {:animation right-anim :flip-h? false}}
    :transition-fn
-   (fn [state & {:keys [dir]}]
+   (fn [state {:keys [dir]}]
      ({(->Vec2 0 0)   :idle
        (->Vec2 -1 0)  :left
        (->Vec2 1 0)   :right
@@ -39,46 +39,27 @@
        (->Vec2 1 -1)  :up} dir))})
 
 (defsystem draw-sprites
-           #{Transform Sprite}
-           [ecs {:keys [renderer]} delta entities]
-           (doseq [e entities]
-             (let [{:keys [sprite w-scale h-scale]} (s/component-of ecs e Sprite)
-                   {{:keys [x y]} :position} (s/component-of ecs e Transform)]
-               (r/draw-sprite renderer sprite x y w-scale h-scale 0))))
+  [Transform Sprite]
+  [[{{:keys [x y]} :position} {:keys [sprite w-scale h-scale]}] {:keys [renderer]} delta]
+  (r/draw-sprite renderer sprite x y w-scale h-scale 0))
 
 (defsystem update-animations
-           #{Animation Sprite}
-           [ecs _ delta entities]
-           (reduce
-             (fn [ecs e]
-               (let [sprite (fn [ecs] (-> (s/component-of ecs e Animation) :animation a/as-sprite))]
-                 (as-> ecs updated-ecs
-                       (s/update-components updated-ecs e Animation :animation a/update delta)
-                       (s/assoc-components updated-ecs e Sprite :sprite (sprite updated-ecs)))))
-             ecs
-             entities))
-
-(defn- change-animation-if-needed [ecs e & args]
-  (letfn [(state-machine [ecs]
-            (:state-machine (s/component-of ecs e AnimationStateMachine)))]
-    (if (state-change? (state-machine ecs) args)
-      (let [updated-ecs (apply s/update-components
-                               ecs
-                               e
-                               AnimationStateMachine
-                               :state-machine
-                               update-state-machine
-                               args)
-            {:keys [animation flip-h?]} (current-state-data (state-machine updated-ecs))
-            flip-fn (comp (if flip-h? - +) #(Math/abs ^float %))
-            updated-ecs (s/assoc-components updated-ecs e Animation :animation animation)]
-        (s/update-components updated-ecs e Sprite :w-scale flip-fn))
-      ecs)))
+  [Animation Sprite]
+  [[{:keys [animation] :as anim-comp} sprite] _ delta]
+  (let [updated-animation (a/update animation delta)]
+    [(assoc anim-comp :animation updated-animation)
+     (assoc sprite :sprite (a/as-sprite updated-animation))]))
 
 (defsystem update-velocity-state-machine
-           #{AnimationStateMachine Velocity}
-           [ecs _ delta entities]
-           (reduce #(change-animation-if-needed %1 %2 :dir (:dir (s/component-of %1 %2 Velocity)))
-                   ecs
-                   entities))
+  [AnimationStateMachine Velocity Sprite Animation]
+  [[{:keys [state-machine] :as sm} vel sprite old-animation] _ delta]
+  (if (state-change? state-machine vel)
+    (let [new-state-machine (update-state-machine state-machine vel)
+          {:keys [animation flip-h?]} (current-state-data new-state-machine)
+          flip-fn (comp (if flip-h? - +) #(Math/abs ^float %))]
+      [(assoc sm :state-machine new-state-machine)
+       vel
+       (update sprite :w-scale flip-fn)
+       (assoc old-animation :animation animation)])
+    [sm vel sprite old-animation]))
 
