@@ -9,9 +9,10 @@
 
 (defn create-ecs [now]
   {:last-timestamp     now
-   :entity-components  {} ; entity         -> {component-type -> instance}
-   :component-entities {} ; component-type -> set of entities
-   :systems            []})
+   :entity-components  {}   ; entity         -> {component-type -> instance}
+   :component-entities {}   ; component-type -> set of entities
+   :systems            []   ; normal systems, which are called once per entity
+   :batch-systems      []}) ;systems that get the entire list of entities as a parameter
 
 (defn create-entity []
   (create-uuid))
@@ -60,8 +61,14 @@
   (reduce intersection
           (map (ecs :component-entities) component-type-set)))
 
+(defn component-of [ecs entity component-type]
+  (get-in ecs [:entity-components entity component-type]))
+
 (defn add-system [ecs system]
   (update ecs :systems conj system))
+
+(defn add-batchsystem [ecs system]
+  (update ecs :batch-systems conj system))
 
 (defn- run-system [ecs data delta {:keys [system-fn component-types]}]
   (map (fn [e]
@@ -82,12 +89,26 @@
           ecs
           updates))
 
+(defn- run-batch-systems [ecs data delta]
+  (reduce (fn [ecs system] (system ecs data delta)) ecs (:batch-systems ecs)))
+
 (defn run-systems [ecs data timestamp]
-  (let [delta (double (/ (- timestamp (:last-timestamp ecs)) 1000))
+  (let [delta   (double (/ (- timestamp (:last-timestamp ecs)) 1000))
         updated (reduce (fn [ecs system] (apply-updates ecs (run-system ecs data delta system)))
                         (transient ecs)
-                        (:systems ecs))]
+                        (:systems ecs))
+        updated (run-batch-systems updated data delta)]
     (persistent! (assoc! updated :last-timestamp timestamp))))
+
+(defmacro def-batchsystem [system-name component-types arglist & exprs]
+  (assert (= 4 (count arglist)) "arglist should be [ecs data delta entities]")
+  `(def ~system-name
+     (fn [ecs# data# delta#]
+       (let [entities# (entities-with-components ecs# ~(set component-types))]
+         (or (and (not-empty entities#) ; only execute system, if it's relevant to some entity
+                  ((fn ~arglist ~@exprs) ecs# data# delta# entities#))
+             ; if the function returned nil, we just return the old ecs
+             ecs#)))))
 
 (defmacro defsystem [system-name component-types arglist & exprs]
   (assert (= 3 (count arglist)) "arglist should be [components data delta]")

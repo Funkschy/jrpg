@@ -2,7 +2,7 @@
 
 (defrecord Animation [animation flip-h?])
 (defrecord AnimationStateMachine [state-machine])
-(defrecord Sprite [sprite w-scale h-scale])
+(defrecord Sprite [sprite w-scale h-scale layer])
 (defrecord Transform [position])
 (defrecord Velocity [dir speed])
 (defrecord Input [])

@@ -1,6 +1,6 @@
 (ns com.github.funkschy.jrpg.graphics
   (:require [com.github.funkschy.jrpg.components]
-            [com.github.funkschy.jrpg.engine.ecs :as s :refer [defsystem]]
+            [com.github.funkschy.jrpg.engine.ecs :as s :refer [defsystem def-batchsystem]]
             [com.github.funkschy.jrpg.engine.render :as r]
             [com.github.funkschy.jrpg.engine.animation :as a]
             [com.github.funkschy.jrpg.engine.math.vector :refer [->Vec2]])
@@ -38,10 +38,18 @@
        (->Vec2 -1 -1) :up
        (->Vec2 1 -1)  :up} dir))})
 
-(defsystem draw-sprites
+(def-batchsystem draw-sprites
   [Transform Sprite]
-  [[{{:keys [x y]} :position} {:keys [sprite w-scale h-scale]}] {:keys [renderer]} delta]
-  (r/draw-sprite renderer sprite x y w-scale h-scale 0))
+  [ecs {:keys [renderer]} delta entities]
+  (doseq [e (sort-by #(:layer (s/component-of ecs % Sprite)) entities)]
+    (let [{:keys [sprite w-scale h-scale]} (s/component-of ecs e Sprite)
+          {{:keys [x y]} :position}        (s/component-of ecs e Transform)]
+      (r/draw-sprite renderer sprite x y w-scale h-scale 0))))
+
+; (defsystem draw-sprites
+;   [Transform Sprite]
+;   [[{{:keys [x y]} :position} {:keys [sprite w-scale h-scale]}] {:keys [renderer]} delta]
+;   (r/draw-sprite renderer sprite x y w-scale h-scale 0))
 
 (defsystem update-animations
   [Animation Sprite]

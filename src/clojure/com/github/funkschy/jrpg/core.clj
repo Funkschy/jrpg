@@ -77,12 +77,12 @@ void main() {
                 (s/add-system p/update-position)
                 (s/add-system g/update-velocity-state-machine)
                 (s/add-system g/update-animations)
-                (s/add-system g/draw-sprites)
+                (s/add-batchsystem g/draw-sprites)
 
                 (s/add-components sly-cat
                                   (c/->Transform (->Vec2 300.0 300.0))
                                   (c/->Animation cat-idle false)
-                                  (c/->Sprite nil sprite-size sprite-size))
+                                  (c/->Sprite nil sprite-size sprite-size 0))
 
                 (s/add-components player
                                   (c/->Velocity (->Vec2 0 0) 200.0)
@@ -90,7 +90,7 @@ void main() {
                                   (c/->Transform (->Vec2 100.0 100.0))
                                   (c/->AnimationStateMachine walk-sm)
                                   (c/->Animation idle false)
-                                  (c/->Sprite nil sprite-size sprite-size)))
+                                  (c/->Sprite nil sprite-size sprite-size 1)))
         init-state (GameState. ecs renderer #(. window getInputActions) #{})]
 
     (. window (setClearColor 0.5 0.5 0.5 1))
