@@ -48,14 +48,16 @@ void main() {
     new-game-state))
 
 
-(def sprite-size 100)
+(def logical-dims [160 144])
 
 (defn -main [& args]
   (let [^Window window (Window. 800 600 "Test" false)
-        renderer (r/create-renderer window vs fs)
+        renderer (r/create-renderer window vs fs logical-dims)
 
-        girl-t (r/create-texture renderer "girl.png")
-        cat-t (r/create-texture renderer "cat.png")
+        girl-t (r/create-texture renderer "girl.png" false)
+        cat-t (r/create-texture renderer "cat.png" false)
+        floor-t (r/create-texture renderer "floor-wood-tile.png" true)
+        wall-t (r/create-texture renderer "light-wall-tile.png" true)
 
         cat-idle (a/sprite-animation (a/sprite-sheet cat-t 16 16) 8)
 
@@ -68,10 +70,14 @@ void main() {
 
         player (s/create-entity)
         sly-cat (s/create-entity)
+        floor (s/create-entity)
+        wall (s/create-entity)
 
         ecs (-> (s/create-ecs (System/currentTimeMillis))
                 (s/add-entity player)
                 (s/add-entity sly-cat)
+                (s/add-entity floor)
+                (s/add-entity wall)
 
                 (s/add-system i/handle-inputs)
                 (s/add-system p/update-position)
@@ -79,18 +85,26 @@ void main() {
                 (s/add-system g/update-animations)
                 (s/add-batchsystem g/draw-sprites)
 
+                (s/add-components wall
+                                  (c/->Transform (->Vec2 0 -60))
+                                  (c/->Sprite (r/image-sprite wall-t) 20 3 1))
+
+                (s/add-components floor
+                                  (c/->Transform (->Vec2 0 24))
+                                  (c/->Sprite (r/image-sprite floor-t) 20 25 0))
+
                 (s/add-components sly-cat
-                                  (c/->Transform (->Vec2 300.0 300.0))
+                                  (c/->Transform (->Vec2 -50.0 30.0))
                                   (c/->Animation cat-idle false)
-                                  (c/->Sprite nil sprite-size sprite-size 0))
+                                  (c/->Sprite nil 1 1 1))
 
                 (s/add-components player
-                                  (c/->Velocity (->Vec2 0 0) 200.0)
+                                  (c/->Velocity (->Vec2 0 0) 100.0)
                                   (c/->Input)
-                                  (c/->Transform (->Vec2 100.0 100.0))
+                                  (c/->Transform (->Vec2 0 0))
                                   (c/->AnimationStateMachine walk-sm)
                                   (c/->Animation idle false)
-                                  (c/->Sprite nil sprite-size sprite-size 1)))
+                                  (c/->Sprite nil 1 1 1)))
         init-state (GameState. ecs renderer #(. window getInputActions) #{})]
 
     (. window (setClearColor 0.5 0.5 0.5 1))

@@ -8,7 +8,7 @@
            [org.lwjgl BufferUtils]
            [java.nio ByteBuffer]))
 
-(defrecord TextureInfo [texture width height])
+(defrecord TextureInfo [texture width height repeat?])
 (defrecord Sprite [texture-info src-x src-y src-w src-h])
 
 (defn image-sprite [texture-info]
@@ -18,19 +18,35 @@
   (clear-screen [this])
   (screen-dims [this] "Returns [width height] of the screen")
   (draw-sprite [this sprite dest-x dest-y]
-               [this sprite dest-x dest-y rotation-degrees]
                [this sprite dest-x dest-y dest-w dest-h]
-               [this sprite dest-x dest-y dest-w dest-h rotation-degrees]
                "Draw (part of) a texture to the screen at the specified location")
-  (create-texture [this img] "Create a texture from an image. Returns a TextureInfo instance"))
+  (create-texture [this img repeat?] "Create a texture from an image. Returns a TextureInfo instance"))
 
-(defrecord OpenGLRenderer [^Window window program attribs unifs buffers])
+(defrecord OpenGLRenderer [^Window window program attribs unifs buffers logical-dims])
 
 (defn degrees-to-radians [degrees]
   (/ (* degrees Math/PI) 180.0))
 
-(defn- orthographic-m4 [^Window window]
-  (m4/orthographic 0 (. window getWidth) (. window getHeight) 0 400 -400))
+(defn- orthographic-m4 [w h]
+  (m4/orthographic 0 w h 0 400 -400))
+
+(defn- calc-viewport [renderer]
+  (let [
+        [screen-w screen-h]   (screen-dims renderer)
+        [logical-w logical-h] (:logical-dims renderer)
+
+        want-aspect (/ logical-w logical-h)
+        real-aspect (/ screen-w screen-h)
+
+        scale (int (max 1 (if (> want-aspect real-aspect)
+                              (/ screen-w logical-w)
+                              (/ screen-h logical-h))))
+
+        viewport-w (int (Math/floor (* logical-w scale)))
+        viewport-h (int (Math/floor (* logical-h scale)))
+        viewport-x (/ (- screen-w viewport-w) 2)
+        viewport-y (/ (- screen-h viewport-h) 2)]
+    [scale viewport-x viewport-y viewport-w viewport-h]))
 
 (extend-type OpenGLRenderer
   Renderer
@@ -43,25 +59,33 @@
 
   (draw-sprite
     ([this {:keys [src-w src-h] :as sprite} dest-x dest-y]
-     (draw-sprite this sprite dest-x dest-y src-w src-h 0))
-    ([this {:keys [src-w src-h] :as sprite} dest-x dest-y rotation-degrees]
-     (draw-sprite this sprite dest-x dest-y src-w src-h rotation-degrees))
+     (draw-sprite this sprite dest-x dest-y src-w src-h))
     ([this sprite dest-x dest-y dest-w dest-h]
-     (draw-sprite this sprite dest-x dest-y dest-w dest-h 0))
-    ([this sprite dest-x dest-y dest-w dest-h rotation-degrees]
      (let [{:keys [window program attribs unifs buffers]} this
            {:keys [texture-info src-x src-y src-w src-h]} sprite
-           {:keys [texture width height]} texture-info
+           {:keys [texture width height repeat?]} texture-info
+
+           [scale vp-x vp-y vp-w vp-h] (calc-viewport this)
+
+           [tex-coord-mul-w tex-coord-mul-h] (if repeat?
+                                               [(/ dest-w src-w) (/ dest-h src-h)]
+                                               [1 1])
 
            ; because texture coords go from 0 to 1 and our coords are a unit quad, we can just
            ; scale the coord quad
            texture-matrix (m4/multiply (m4/translation (/ src-x width) (/ src-y height) 0)
-                                       (m4/scale (/ src-w width) (/ src-h height) 1))
-           matrix (m4/multiply (orthographic-m4 window)
-                               (m4/translation dest-x dest-y 0)
-                               (m4/z-rotation (degrees-to-radians rotation-degrees))
-                               (m4/scale dest-w dest-h 1)
+                                       (m4/scale (* tex-coord-mul-w (/ src-w width))
+                                                 (* tex-coord-mul-h (/ src-h height)) 1))
+           matrix (m4/multiply (orthographic-m4 vp-w vp-h)
+                               ; move origin into the center of the screen
+                               (m4/translation (/ vp-w 2) (/ vp-h 2) 0)
+                               (m4/translation (* scale dest-x) (* scale dest-y) 0)
+                               (m4/scale       (* scale dest-w) (* scale dest-h) 1)
+                               ; move origin to the middle of the sprite (important for flipping)
                                (m4/translation -0.5 -0.5 0))]
+
+       (GL30/glViewport vp-x vp-y vp-w vp-h)
+
        (GL30/glBindTexture GL30/GL_TEXTURE_2D texture)
        (GL30/glUseProgram program)
 
@@ -80,7 +104,7 @@
        (GL30/glUniform1i (unifs "u_texture") 0)
        (GL30/glDrawArrays GL30/GL_TRIANGLES 0 6))))
 
-  (create-texture [_ img-res-path]
+  (create-texture [_ img-res-path repeat?]
     (with-open [stack (MemoryStack/stackPush)]
       (let [w (. stack (mallocInt 1))
             h (. stack (mallocInt 1))
@@ -101,16 +125,16 @@
         (GL30/glBindTexture GL30/GL_TEXTURE_2D texture)
         ; each component is 1 byte
         (GL30/glPixelStorei GL30/GL_UNPACK_ALIGNMENT 1)
-        ; assume images are not power of 2
-        (GL30/glTexParameteri GL30/GL_TEXTURE_2D GL30/GL_TEXTURE_WRAP_S GL30/GL_CLAMP_TO_EDGE)
-        (GL30/glTexParameteri GL30/GL_TEXTURE_2D GL30/GL_TEXTURE_WRAP_T GL30/GL_CLAMP_TO_EDGE)
+        (when-not repeat?
+          (GL30/glTexParameteri GL30/GL_TEXTURE_2D GL30/GL_TEXTURE_WRAP_S GL30/GL_CLAMP_TO_EDGE)
+          (GL30/glTexParameteri GL30/GL_TEXTURE_2D GL30/GL_TEXTURE_WRAP_T GL30/GL_CLAMP_TO_EDGE))
         (GL30/glTexParameteri GL30/GL_TEXTURE_2D GL30/GL_TEXTURE_MIN_FILTER GL30/GL_NEAREST)
         (GL30/glTexParameteri GL30/GL_TEXTURE_2D GL30/GL_TEXTURE_MAG_FILTER GL30/GL_NEAREST)
 
         (GL30/glTexImage2D GL30/GL_TEXTURE_2D 0 GL30/GL_RGBA width height 0 GL30/GL_RGBA GL30/GL_UNSIGNED_BYTE buf)
         (STBImage/stbi_image_free buf)
 
-        (TextureInfo. texture width height)))))
+        (TextureInfo. texture width height repeat?)))))
 
 (defn- create-shader [kind source]
   (let [shader (GL30/glCreateShader kind)]
@@ -167,7 +191,7 @@
       {}
       names)))
 
-(defn create-renderer [window vs-src fs-src]
+(defn create-renderer [window vs-src fs-src logical-dims]
   (let [vs (create-vertex-shader vs-src)
         fs (create-fragment-shader fs-src)
         program (create-program vs fs)
@@ -177,4 +201,4 @@
         buffers (create-unit-quad-buffers "position" "texcoord")]
     (GL30/glBlendFunc GL30/GL_SRC_ALPHA GL30/GL_ONE_MINUS_SRC_ALPHA)
     (GL30/glEnable GL30/GL_BLEND)
-    (OpenGLRenderer. window program attribs unifs buffers)))
+    (OpenGLRenderer. window program attribs unifs buffers logical-dims)))
