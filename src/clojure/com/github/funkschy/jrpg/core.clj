@@ -4,6 +4,7 @@
             [com.github.funkschy.jrpg.physics :as p]
             [com.github.funkschy.jrpg.graphics :as g]
             [com.github.funkschy.jrpg.components :as c]
+            [com.github.funkschy.jrpg.resources :as res]
 
             [com.github.funkschy.jrpg.engine.ecs :as s]
             [com.github.funkschy.jrpg.engine.render :as r]
@@ -54,10 +55,12 @@ void main() {
   (let [^Window window (Window. 800 600 "Test" false)
         renderer (r/create-renderer window vs fs logical-dims)
 
-        girl-t (r/create-texture renderer "girl.png" false)
-        cat-t (r/create-texture renderer "cat.png" false)
-        floor-t (r/create-texture renderer "floor-wood-tile.png" true)
-        wall-t (r/create-texture renderer "light-wall-tile.png" true)
+        images (res/load "girl.png" "cat.png" "floor-wood-tile.png" "light-wall-tile.png")
+
+        girl-t (r/create-texture renderer (images "girl.png") false)
+        cat-t (r/create-texture renderer (images "cat.png") false)
+        floor-t (r/create-texture renderer (images "floor-wood-tile.png") true)
+        wall-t (r/create-texture renderer (images "light-wall-tile.png") true)
 
         cat-idle (a/sprite-animation (a/sprite-sheet cat-t 16 16) 8)
 

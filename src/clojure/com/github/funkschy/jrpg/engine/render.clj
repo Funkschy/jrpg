@@ -104,16 +104,13 @@
        (GL30/glUniform1i (unifs "u_texture") 0)
        (GL30/glDrawArrays GL30/GL_TRIANGLES 0 6))))
 
-  (create-texture [_ img-res-path repeat?]
+  (create-texture [_ img repeat?]
     (with-open [stack (MemoryStack/stackPush)]
       (let [w (. stack (mallocInt 1))
             h (. stack (mallocInt 1))
             channels (. stack (mallocInt 1))
 
-            cl (. (Thread/currentThread) getContextClassLoader)
-            data (with-open [stream (. cl (getResourceAsStream img-res-path))]
-                   (. stream readAllBytes))
-            buffer (-> (MemoryUtil/memAlloc (count data)) (.put ^bytes data) (.flip))
+            buffer (-> (MemoryUtil/memAlloc (count img)) (.put ^bytes img) (.flip))
             buf (STBImage/stbi_load_from_memory ^ByteBuffer buffer w h channels 4)
             _ (MemoryUtil/memFree buffer)
 
