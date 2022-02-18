@@ -48,6 +48,13 @@ void main() {
     (. ^Window (:window (:renderer gamestate)) update)
     new-game-state))
 
+(defn load-animations [renderer filename]
+  (let [img-file  (str filename ".png")
+        json-file (str filename ".json")
+        resources (res/load img-file json-file)
+        texture   (r/create-texture renderer (resources img-file) false)
+        json      (resources json-file)]
+    (a/sprite-animation-json texture json)))
 
 (def logical-dims [160 144])
 
@@ -55,21 +62,16 @@ void main() {
   (let [^Window window (Window. 800 600 "Test" false)
         renderer (r/create-renderer window vs fs logical-dims)
 
-        images (res/load "girl.png" "cat.png" "floor-wood-tile.png" "light-wall-tile.png")
+        resources (res/load "floor-wood-tile.png" "light-wall-tile.png")
 
-        girl-t (r/create-texture renderer (images "girl.png") false)
-        cat-t (r/create-texture renderer (images "cat.png") false)
-        floor-t (r/create-texture renderer (images "floor-wood-tile.png") true)
-        wall-t (r/create-texture renderer (images "light-wall-tile.png") true)
+        floor-t (r/create-texture renderer (resources "floor-wood-tile.png") true)
+        wall-t (r/create-texture renderer (resources "light-wall-tile.png") true)
 
-        cat-idle (a/sprite-animation (a/sprite-sheet cat-t 16 16) 8)
+        cat-idle   (load-animations renderer "cat")
+        girl-anims (map (load-animations renderer "girl")
+                        ["Idle" "WalkDown" "WalkUp" "WalkHorizontal" "WalkHorizontal"])
 
-        idle (a/sprite-animation-secs (a/sprite-sheet girl-t 16 16) 4 1.5)
-        walk-down (a/sprite-animation (a/sprite-sheet girl-t 16 16) 4 6)
-        walk-up (a/sprite-animation (a/sprite-sheet girl-t 16 16) 10 6)
-        walk-left (a/sprite-animation (a/sprite-sheet girl-t 16 16) 16 6)
-        walk-right (a/sprite-animation (a/sprite-sheet girl-t 16 16) 16 6)
-        walk-sm (g/walk-state-machine idle walk-down walk-up walk-left walk-right)
+        walk-sm (apply g/walk-state-machine girl-anims)
 
         player (s/create-entity)
         sly-cat (s/create-entity)
@@ -106,7 +108,7 @@ void main() {
                                   (c/->Input)
                                   (c/->Transform (->Vec2 0 0))
                                   (c/->AnimationStateMachine walk-sm)
-                                  (c/->Animation idle false)
+                                  (c/->Animation (first girl-anims) false)
                                   (c/->Sprite nil 1 1 1)))
         init-state (GameState. ecs renderer #(. window getInputActions) #{})]
 
