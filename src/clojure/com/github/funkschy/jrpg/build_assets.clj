@@ -8,6 +8,9 @@
 (def sliced-spritesheets
   ["background"])
 
+(def simple-spritesheets
+  ["gb-font"])
+
 (defn- get-aseprite-path [filename]
   (str "pixelart/" filename ".aseprite"))
 
@@ -29,6 +32,10 @@
    "--save-as" "resources/{slice}.png"
    "--split-slices"])
 
+(defn- simple-args [asset]
+  ["-b" (get-aseprite-path asset)
+   "--sheet" (get-spritesheet-path asset)])
+
 (defn- run [aseprite-path assets arg-fn]
   (doseq [asset assets]
     (let [{:keys [exit out err]}
@@ -41,4 +48,5 @@
   ([aseprite-path]
    (run aseprite-path animation-spritesheets animation-args)
    (run aseprite-path sliced-spritesheets sliced-args)
+   (run aseprite-path simple-spritesheets simple-args)
    (println "finished building assets")))

@@ -1,6 +1,7 @@
 (ns com.github.funkschy.jrpg.core
   (:gen-class)
-  (:require [com.github.funkschy.jrpg.inputs :as i]
+  (:require [com.github.funkschy.jrpg.text :as t]
+            [com.github.funkschy.jrpg.inputs :as i]
             [com.github.funkschy.jrpg.physics :as p]
             [com.github.funkschy.jrpg.graphics :as g]
             [com.github.funkschy.jrpg.components :as c]
@@ -14,29 +15,29 @@
            (org.lwjgl.opengl GL11)))
 
 (def fs "
-precision mediump float;
-varying vec2 v_texcoord;
-uniform sampler2D u_texture;
+  precision mediump float;
+        varying vec2 v_texcoord;
+        uniform sampler2D u_texture;
 
-void main() {
-    gl_FragColor = texture2D(u_texture, v_texcoord);
-}
-")
+        void main() {
+        gl_FragColor = texture2D(u_texture, v_texcoord);
+        }
+        ")
 
 (def vs "
-attribute vec4 a_position;
-attribute vec2 a_texcoord;
+  attribute vec4 a_position;
+        attribute vec2 a_texcoord;
 
-uniform mat4 u_matrix;
-uniform mat4 u_texture_matrix;
+        uniform mat4 u_matrix;
+        uniform mat4 u_texture_matrix;
 
-varying vec2 v_texcoord;
+        varying vec2 v_texcoord;
 
-void main() {
-  gl_Position = u_matrix * a_position;
-  v_texcoord = (u_texture_matrix * vec4(a_texcoord, 0.0, 1.0)).xy;
-}
-")
+        void main() {
+        gl_Position = u_matrix * a_position;
+        v_texcoord = (u_texture_matrix * vec4(a_texcoord, 0.0, 1.0)).xy;
+        }
+        ")
 
 (defrecord GameState [ecs renderer input-fn inputs])
 
@@ -48,34 +49,21 @@ void main() {
     (. ^Window (:window (:renderer gamestate)) update)
     new-game-state))
 
-(defn load-animations [renderer filename]
-  (let [img-file  (str filename ".png")
-        json-file (str filename ".json")
-        resources (res/load img-file json-file)
-        texture   (r/create-texture renderer (resources img-file) false)
-        json      (resources json-file)]
-    (a/sprite-animation-json texture json)))
-
-(defn load-textures [renderer repeat? & filenames]
-  (let [img-files  (map #(str % ".png") filenames)
-        resources  (apply res/load img-files)
-        mk-texture #(r/create-texture renderer (resources (str % ".png")) repeat?)
-        textures   (map #(vector % (r/image-sprite (mk-texture %))) filenames)]
-    (into {} textures)))
-
 (def logical-dims [160 144])
 
 (defn -main [& args]
   (let [^Window window (Window. 800 600 "JRPG" false)
         renderer (r/create-renderer window vs fs logical-dims)
 
-        {:strs [floor-light wall-light]} (load-textures renderer true "floor-light" "wall-light")
+        {:strs [floor-light wall-light]} (res/load-textures renderer true "floor-light" "wall-light")
 
-        cat-idle   (load-animations renderer "cat")
-        girl-anims (map (load-animations renderer "girl")
+        cat-idle   (res/load-animations renderer "cat")
+        girl-anims (map (res/load-animations renderer "girl")
                         ["idle" "walk-down" "walk-up" "walk-horizontal" "walk-horizontal"])
 
         walk-sm (apply g/walk-state-machine girl-anims)
+
+        font (t/load-font renderer "gb-font" 7)
 
         player (s/create-entity)
         sly-cat (s/create-entity)

@@ -13,8 +13,8 @@
   (SpriteSheet. (image-sprite texture-info)
                 sprite-w
                 sprite-h
-                (/ (:width texture-info) sprite-w)
-                (/ (:height texture-info) sprite-h)))
+                (quot (:width texture-info) sprite-w)
+                (quot (:height texture-info) sprite-h)))
 
 (defn at [{:keys [entire-sprite sprite-w sprite-h sprite-count-w sprite-count-h]} x y]
   (assert (and (< -1 x sprite-count-w) (< -1 y sprite-count-h)) "out of bounds sprite access")
