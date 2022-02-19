@@ -22,7 +22,7 @@ of those, but i personally only test on Linux.
 
 ### Resources
 The resources in the resources/ directory are automatically generated from the .aseprite files in
-the pixelart/ directory by running `lein build-assets`. I chose to include them in the git repo,
+the pixelart/ directory by running `lein build-assets <path-to-aseprite-exe>`. I chose to include them in the git repo,
 so that people can build the game without having [Aseprite](https://www.aseprite.org) installed.
 If you want to change the assets, just edit the aseprite files and regenerate the resources.
 
