@@ -73,13 +73,19 @@
     (:sprite (sprite-infos current-idx))))
 
 (def ^:private item-regex #".* (\d+)\..*")
-
 (defn- frame-nr [[n _]]
   (Integer/parseInt (last (re-find item-regex n))))
 
+(defn- get-frames [data]
+  (if (map? (data "frames"))
+    ; format json-hash
+    (vec (map second (sort-by frame-nr (data "frames"))))
+    ; format json-array
+    (data "frames")))
+
 (defn sprite-animation-json [texture-info json-filename]
   (let [data   (json/read-str (slurp json-filename))
-        frames (vec (map second (sort-by frame-nr (data "frames"))))
+        frames (get-frames data)
         sprite (fn [{{:strs [x y w h]} "frame" duration "duration"}]
                  {:sprite (->Sprite texture-info x y w h)
                   :duration (/ duration 1000)})

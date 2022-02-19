@@ -1,5 +1,6 @@
-{ "frames": {
-   "cat 0.aseprite": {
+{ "frames": [
+   {
+    "filename": "cat 0.aseprite",
     "frame": { "x": 0, "y": 0, "w": 16, "h": 16 },
     "rotated": false,
     "trimmed": false,
@@ -7,7 +8,8 @@
     "sourceSize": { "w": 16, "h": 16 },
     "duration": 150
    },
-   "cat 1.aseprite": {
+   {
+    "filename": "cat 1.aseprite",
     "frame": { "x": 16, "y": 0, "w": 16, "h": 16 },
     "rotated": false,
     "trimmed": false,
@@ -15,7 +17,8 @@
     "sourceSize": { "w": 16, "h": 16 },
     "duration": 150
    },
-   "cat 2.aseprite": {
+   {
+    "filename": "cat 2.aseprite",
     "frame": { "x": 32, "y": 0, "w": 16, "h": 16 },
     "rotated": false,
     "trimmed": false,
@@ -23,7 +26,8 @@
     "sourceSize": { "w": 16, "h": 16 },
     "duration": 150
    },
-   "cat 3.aseprite": {
+   {
+    "filename": "cat 3.aseprite",
     "frame": { "x": 48, "y": 0, "w": 16, "h": 16 },
     "rotated": false,
     "trimmed": false,
@@ -31,7 +35,8 @@
     "sourceSize": { "w": 16, "h": 16 },
     "duration": 150
    },
-   "cat 4.aseprite": {
+   {
+    "filename": "cat 4.aseprite",
     "frame": { "x": 64, "y": 0, "w": 16, "h": 16 },
     "rotated": false,
     "trimmed": false,
@@ -39,7 +44,8 @@
     "sourceSize": { "w": 16, "h": 16 },
     "duration": 150
    },
-   "cat 5.aseprite": {
+   {
+    "filename": "cat 5.aseprite",
     "frame": { "x": 80, "y": 0, "w": 16, "h": 16 },
     "rotated": false,
     "trimmed": false,
@@ -47,7 +53,8 @@
     "sourceSize": { "w": 16, "h": 16 },
     "duration": 150
    },
-   "cat 6.aseprite": {
+   {
+    "filename": "cat 6.aseprite",
     "frame": { "x": 96, "y": 0, "w": 16, "h": 16 },
     "rotated": false,
     "trimmed": false,
@@ -55,7 +62,8 @@
     "sourceSize": { "w": 16, "h": 16 },
     "duration": 150
    },
-   "cat 7.aseprite": {
+   {
+    "filename": "cat 7.aseprite",
     "frame": { "x": 112, "y": 0, "w": 16, "h": 16 },
     "rotated": false,
     "trimmed": false,
@@ -63,20 +71,15 @@
     "sourceSize": { "w": 16, "h": 16 },
     "duration": 150
    }
- },
+ ],
  "meta": {
   "app": "http://www.aseprite.org/",
-  "version": "1.2.33-dev",
+  "version": "1.3-beta11-dev",
   "image": "cat.png",
   "format": "RGBA8888",
   "size": { "w": 128, "h": 16 },
   "scale": "1",
   "frameTags": [
-  ],
-  "layers": [
-   { "name": "Layer 1", "opacity": 255, "blendMode": "normal" }
-  ],
-  "slices": [
   ]
  }
 }

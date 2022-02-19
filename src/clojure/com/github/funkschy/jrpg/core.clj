@@ -56,20 +56,24 @@ void main() {
         json      (resources json-file)]
     (a/sprite-animation-json texture json)))
 
+(defn load-textures [renderer repeat? & filenames]
+  (let [img-files  (map #(str % ".png") filenames)
+        resources  (apply res/load img-files)
+        mk-texture #(r/create-texture renderer (resources (str % ".png")) repeat?)
+        textures   (map #(vector % (r/image-sprite (mk-texture %))) filenames)]
+    (into {} textures)))
+
 (def logical-dims [160 144])
 
 (defn -main [& args]
-  (let [^Window window (Window. 800 600 "Test" false)
+  (let [^Window window (Window. 800 600 "JRPG" false)
         renderer (r/create-renderer window vs fs logical-dims)
 
-        resources (res/load "floor-wood-tile.png" "light-wall-tile.png")
-
-        floor-t (r/create-texture renderer (resources "floor-wood-tile.png") true)
-        wall-t (r/create-texture renderer (resources "light-wall-tile.png") true)
+        {:strs [floor-light wall-light]} (load-textures renderer true "floor-light" "wall-light")
 
         cat-idle   (load-animations renderer "cat")
         girl-anims (map (load-animations renderer "girl")
-                        ["Idle" "WalkDown" "WalkUp" "WalkHorizontal" "WalkHorizontal"])
+                        ["idle" "walk-down" "walk-up" "walk-horizontal" "walk-horizontal"])
 
         walk-sm (apply g/walk-state-machine girl-anims)
 
@@ -92,11 +96,11 @@ void main() {
 
                 (s/add-components wall
                                   (c/->Transform (->Vec2 0 -60))
-                                  (c/->Sprite (r/image-sprite wall-t) 20 3 1))
+                                  (c/->Sprite wall-light 20 3 1))
 
                 (s/add-components floor
                                   (c/->Transform (->Vec2 0 24))
-                                  (c/->Sprite (r/image-sprite floor-t) 20 25 0))
+                                  (c/->Sprite floor-light 20 25 0))
 
                 (s/add-components sly-cat
                                   (c/->Transform (->Vec2 -50.0 30.0))
