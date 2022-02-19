@@ -5,7 +5,7 @@
     "trimmed": false,
     "spriteSourceSize": { "x": 0, "y": 0, "w": 16, "h": 16 },
     "sourceSize": { "w": 16, "h": 16 },
-    "duration": 100
+    "duration": 150
    },
    "cat 1.aseprite": {
     "frame": { "x": 16, "y": 0, "w": 16, "h": 16 },
@@ -13,7 +13,7 @@
     "trimmed": false,
     "spriteSourceSize": { "x": 0, "y": 0, "w": 16, "h": 16 },
     "sourceSize": { "w": 16, "h": 16 },
-    "duration": 100
+    "duration": 150
    },
    "cat 2.aseprite": {
     "frame": { "x": 32, "y": 0, "w": 16, "h": 16 },
@@ -21,7 +21,7 @@
     "trimmed": false,
     "spriteSourceSize": { "x": 0, "y": 0, "w": 16, "h": 16 },
     "sourceSize": { "w": 16, "h": 16 },
-    "duration": 100
+    "duration": 150
    },
    "cat 3.aseprite": {
     "frame": { "x": 48, "y": 0, "w": 16, "h": 16 },
@@ -29,7 +29,7 @@
     "trimmed": false,
     "spriteSourceSize": { "x": 0, "y": 0, "w": 16, "h": 16 },
     "sourceSize": { "w": 16, "h": 16 },
-    "duration": 100
+    "duration": 150
    },
    "cat 4.aseprite": {
     "frame": { "x": 64, "y": 0, "w": 16, "h": 16 },
@@ -37,7 +37,7 @@
     "trimmed": false,
     "spriteSourceSize": { "x": 0, "y": 0, "w": 16, "h": 16 },
     "sourceSize": { "w": 16, "h": 16 },
-    "duration": 100
+    "duration": 150
    },
    "cat 5.aseprite": {
     "frame": { "x": 80, "y": 0, "w": 16, "h": 16 },
@@ -45,7 +45,7 @@
     "trimmed": false,
     "spriteSourceSize": { "x": 0, "y": 0, "w": 16, "h": 16 },
     "sourceSize": { "w": 16, "h": 16 },
-    "duration": 100
+    "duration": 150
    },
    "cat 6.aseprite": {
     "frame": { "x": 96, "y": 0, "w": 16, "h": 16 },
@@ -53,7 +53,7 @@
     "trimmed": false,
     "spriteSourceSize": { "x": 0, "y": 0, "w": 16, "h": 16 },
     "sourceSize": { "w": 16, "h": 16 },
-    "duration": 100
+    "duration": 150
    },
    "cat 7.aseprite": {
     "frame": { "x": 112, "y": 0, "w": 16, "h": 16 },
@@ -61,7 +61,7 @@
     "trimmed": false,
     "spriteSourceSize": { "x": 0, "y": 0, "w": 16, "h": 16 },
     "sourceSize": { "w": 16, "h": 16 },
-    "duration": 100
+    "duration": 150
    }
  },
  "meta": {
