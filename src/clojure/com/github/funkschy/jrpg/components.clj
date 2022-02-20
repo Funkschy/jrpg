@@ -6,4 +6,4 @@
 (defrecord Transform [position])
 (defrecord Velocity [dir speed])
 (defrecord Input [])
-
+(defrecord Hitbox [aabb])

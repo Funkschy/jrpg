@@ -61,7 +61,7 @@
     ([this {:keys [src-w src-h] :as sprite} dest-x dest-y]
      (draw-sprite this sprite dest-x dest-y src-w src-h))
     ([this sprite dest-x dest-y dest-w dest-h]
-     (let [{:keys [window program attribs unifs buffers]} this
+     (let [{:keys [program attribs unifs buffers]} this
            {:keys [texture-info src-x src-y src-w src-h]} sprite
            {:keys [texture width height repeat?]} texture-info
 

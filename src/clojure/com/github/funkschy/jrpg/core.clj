@@ -9,6 +9,7 @@
 
             [com.github.funkschy.jrpg.engine.ecs :as s]
             [com.github.funkschy.jrpg.engine.render :as r]
+            [com.github.funkschy.jrpg.engine.animation :as a]
             [com.github.funkschy.jrpg.engine.math.vector :refer [->Vec2]])
   (:import (com.github.funkschy.jrpg.engine Window)
            (org.lwjgl.opengl GL11)))
@@ -38,6 +39,8 @@
 
         walk-sm (apply g/walk-state-machine girl-anims)
 
+        hitbox (a/at (res/load-spritesheet renderer "hitbox" 16) 0 0)
+
         font (t/load-font renderer "gb-font" 7)
 
         player (s/create-entity)
@@ -53,11 +56,14 @@
 
                 (s/add-system i/handle-inputs)
                 (s/add-system p/update-position)
+                (s/add-system p/resolve-collisions)
                 (s/add-system g/update-velocity-state-machine)
                 (s/add-system g/update-animations)
-                (s/add-batchsystem g/draw-sprites)
+                (s/add-system g/draw-sprites)
+                (s/add-system (g/draw-hitboxes-system hitbox))
 
                 (s/add-components wall
+                                  (c/->Hitbox (p/->AABB (->Vec2 -80 -15) (->Vec2 160 20)))
                                   (c/->Transform (->Vec2 0 -60))
                                   (c/->Sprite wall-light 20 3 1))
 
@@ -68,15 +74,17 @@
                 (s/add-components sly-cat
                                   (c/->Transform (->Vec2 -50.0 30.0))
                                   (c/->Animation cat-idle false)
-                                  (c/->Sprite nil 1 1 1))
+                                  (c/->Hitbox (p/->AABB (->Vec2 -8 -8) (->Vec2 16 16)))
+                                  (c/->Sprite nil 1 1 2))
 
                 (s/add-components player
                                   (c/->Velocity (->Vec2 0 0) 100.0)
                                   (c/->Input)
                                   (c/->Transform (->Vec2 0 0))
+                                  (c/->Hitbox (p/->AABB (->Vec2 -8 -8) (->Vec2 16 16)))
                                   (c/->AnimationStateMachine walk-sm)
                                   (c/->Animation (first girl-anims) false)
-                                  (c/->Sprite nil 1 1 1)))
+                                  (c/->Sprite nil 1 1 2)))
         init-state (GameState. ecs renderer #(. window getInputActions) #{})]
 
     (. window (setClearColor 0.5 0.5 0.5 1))

@@ -6,7 +6,7 @@
   (let [font (res/load-spritesheet renderer font-name letter-size)
         w    (:sprite-count-w font)]
     (fn [c]
-      (let [upper (Character/toUpperCase c)
+      (let [upper (Character/toUpperCase ^char c)
             idx   (inc (- (int upper) (int \,)))]
         (a/at font (mod idx w) (quot idx w))))))
 

@@ -9,7 +9,8 @@
   ["background"])
 
 (def simple-spritesheets
-  ["gb-font"])
+  ["gb-font"
+   "hitbox"])
 
 (defn- get-aseprite-path [filename]
   (str "pixelart/" filename ".aseprite"))

@@ -1,5 +1,5 @@
 (ns com.github.funkschy.jrpg.engine.ecs
-  (:require [clojure.set :refer [difference subset? intersection]])
+  (:require [clojure.set :refer [intersection]])
   (:import [java.util UUID]))
 
 (defn create-uuid []
@@ -11,8 +11,7 @@
   {:last-timestamp     now
    :entity-components  {}   ; entity         -> {component-type -> instance}
    :component-entities {}   ; component-type -> set of entities
-   :systems            []   ; normal systems, which are called once per entity
-   :batch-systems      []}) ;systems that get the entire list of entities as a parameter
+   :systems            []}) ; systems, either normal (once per entity) or batch
 
 (defn create-entity []
   (create-uuid))
@@ -39,11 +38,11 @@
   (assoc ecs
          :component-entities
          (persistent!
-           (reduce (fn [cs->es c]
-                     (let [t (type c)]
-                       (assoc! cs->es t (conj (or (cs->es t) #{}) entity))))
-                   (transient (ecs :component-entities))
-                   component-types))))
+          (reduce (fn [cs->es c]
+                    (let [t (type c)]
+                      (assoc! cs->es t (conj (or (cs->es t) #{}) entity))))
+                  (transient (ecs :component-entities))
+                  component-types))))
 
 (defn add-components [ecs entity & components]
   (let [old-comps (get-in ecs [:entity-components entity])
@@ -67,9 +66,6 @@
 (defn add-system [ecs system]
   (update ecs :systems conj system))
 
-(defn add-batchsystem [ecs system]
-  (update ecs :batch-systems conj system))
-
 (defn- run-system [ecs data delta {:keys [system-fn component-types]}]
   (map (fn [e]
          (let [comps  (get-in ecs [:entity-components e])
@@ -89,15 +85,19 @@
           ecs
           updates))
 
-(defn- run-batch-systems [ecs data delta]
-  (reduce (fn [ecs system] (system ecs data delta)) ecs (:batch-systems ecs)))
+(defn- run-any-system [data delta ecs system]
+  (if (= (class system) SystemData)
+    (apply-updates ecs (run-system ecs data delta system))
+    (system ecs data delta)))
+
+(defn update-component [ecs e component-type instance]
+  (apply-update ecs e component-type instance))
 
 (defn run-systems [ecs data timestamp]
   (let [delta   (double (/ (- timestamp (:last-timestamp ecs)) 1000))
-        updated (reduce (fn [ecs system] (apply-updates ecs (run-system ecs data delta system)))
+        updated (reduce (partial run-any-system data delta)
                         (transient ecs)
-                        (:systems ecs))
-        updated (run-batch-systems updated data delta)]
+                        (:systems ecs))]
     (persistent! (assoc! updated :last-timestamp timestamp))))
 
 (defmacro def-batchsystem [system-name component-types arglist & exprs]
@@ -107,7 +107,7 @@
        (let [entities# (entities-with-components ecs# ~(set component-types))]
          (or (and (not-empty entities#) ; only execute system, if it's relevant to some entity
                   ((fn ~arglist ~@exprs) ecs# data# delta# entities#))
-             ; if the function returned nil, we just return the old ecs
+                                        ; if the function returned nil, we just return the old ecs
              ecs#)))))
 
 (defmacro defsystem [system-name component-types arglist & exprs]
