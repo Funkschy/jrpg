@@ -9,35 +9,9 @@
 
             [com.github.funkschy.jrpg.engine.ecs :as s]
             [com.github.funkschy.jrpg.engine.render :as r]
-            [com.github.funkschy.jrpg.engine.animation :as a]
             [com.github.funkschy.jrpg.engine.math.vector :refer [->Vec2]])
   (:import (com.github.funkschy.jrpg.engine Window)
            (org.lwjgl.opengl GL11)))
-
-(def fs "
-  precision mediump float;
-        varying vec2 v_texcoord;
-        uniform sampler2D u_texture;
-
-        void main() {
-        gl_FragColor = texture2D(u_texture, v_texcoord);
-        }
-        ")
-
-(def vs "
-  attribute vec4 a_position;
-        attribute vec2 a_texcoord;
-
-        uniform mat4 u_matrix;
-        uniform mat4 u_texture_matrix;
-
-        varying vec2 v_texcoord;
-
-        void main() {
-        gl_Position = u_matrix * a_position;
-        v_texcoord = (u_texture_matrix * vec4(a_texcoord, 0.0, 1.0)).xy;
-        }
-        ")
 
 (defrecord GameState [ecs renderer input-fn inputs])
 
@@ -51,9 +25,10 @@
 
 (def logical-dims [160 144])
 
-(defn -main [& args]
+(defn -main []
   (let [^Window window (Window. 800 600 "JRPG" false)
-        renderer (r/create-renderer window vs fs logical-dims)
+        {vs "vertex.glsl" fs "fragment.glsl"} (res/load "vertex.glsl" "fragment.glsl")
+        renderer (r/create-renderer window (String. ^bytes vs) (String. ^bytes fs) logical-dims)
 
         {:strs [floor-light wall-light]} (res/load-textures renderer true "floor-light" "wall-light")
 
