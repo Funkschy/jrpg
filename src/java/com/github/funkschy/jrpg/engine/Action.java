@@ -1,5 +1,5 @@
 package com.github.funkschy.jrpg.engine;
 
 public enum Action {
-    UP, DOWN, LEFT, RIGHT, INTERACT
+    UP, DOWN, LEFT, RIGHT, INTERACT, DEBUG
 }

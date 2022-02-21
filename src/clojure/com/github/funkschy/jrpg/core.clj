@@ -17,13 +17,24 @@
    (com.github.funkschy.jrpg.engine Window Action)
    (org.lwjgl.opengl GL11)))
 
-(defrecord GameState [ecs renderer input-fn inputs debug?])
+(defrecord GameState [ecs renderer input-fn inputs debug? debug-enabled-timestamp])
+
+(defn- debug-state [gamestate timestamp pressed?]
+  (let [dbg-ts (:debug-enabled-timestamp gamestate)
+        can-debug? (> (- timestamp dbg-ts) 100)
+        change-debug? (and can-debug? pressed?)
+        should-debug? ((if change-debug? not identity) (:debug? gamestate))]
+    [should-debug? (if change-debug? timestamp dbg-ts)]))
 
 (defn- update-state [gamestate timestamp]
   (r/clear-screen (:renderer gamestate))
-  (let [new-game-state (-> gamestate
-                           (update :inputs (fn [_] ((:input-fn gamestate))))
-                           (update :ecs s/run-systems gamestate timestamp))]
+  (let [inputs ((:input-fn gamestate))
+        [should-debug? new-dbg-ts] (debug-state gamestate timestamp (inputs Action/DEBUG))
+        new-game-state (-> gamestate
+                           (assoc :inputs inputs)
+                           (update :ecs s/run-systems gamestate timestamp)
+                           (assoc :debug? should-debug?)
+                           (assoc :debug-enabled-timestamp new-dbg-ts))]
     (. ^Window (:window (:renderer gamestate)) update)
     new-game-state))
 
@@ -32,6 +43,7 @@
              (int \A) Action/LEFT
              (int \S) Action/DOWN
              (int \D) Action/RIGHT
+             (int \G) Action/DEBUG
              (int \space) Action/INTERACT})
 
 (defn -main []
@@ -59,7 +71,9 @@
         floor (s/create-entity)
         wall (s/create-entity)
 
-        ecs (-> (s/create-ecs (System/currentTimeMillis))
+        now (System/currentTimeMillis)
+
+        ecs (-> (s/create-ecs now)
                 (s/add-entity player)
                 (s/add-entity sly-cat)
                 (s/add-entity floor)
@@ -102,7 +116,7 @@
                                   (c/->AnimationStateMachine walk-sm)
                                   (c/->Animation (first girl-anims) false)
                                   (c/->Sprite nil 1 1 2)))
-        init-state (GameState. ecs renderer #(. window getInputActions) #{} true)]
+        init-state (GameState. ecs renderer #(. window getInputActions) #{} false now)]
 
     (. window (setClearColor 0.5 0.5 0.5 1))
     (println "OpenGL version:" (GL11/glGetString GL11/GL_VERSION))
