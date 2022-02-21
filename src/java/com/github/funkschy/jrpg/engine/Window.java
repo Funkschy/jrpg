@@ -5,18 +5,20 @@ import org.lwjgl.glfw.GLFWErrorCallback;
 import org.lwjgl.glfw.GLFWVidMode;
 import org.lwjgl.opengl.GL;
 import org.lwjgl.system.MemoryUtil;
+import java.util.Map;
 
 import static org.lwjgl.glfw.GLFW.*;
 import static org.lwjgl.opengl.GL11.*;
 
 public class Window {
     private final long windowHandle;
-    private final Input input = new Input();
+    private final Input input;
 
     private int width;
     private int height;
 
-    public Window(int initWidth, int initHeight, String title, boolean vsync) {
+    public Window(int initWidth, int initHeight, String title, Map<Integer, Action> inputMappings, boolean vsync) {
+        input = new Input(inputMappings);
         width = initWidth;
         height = initHeight;
 

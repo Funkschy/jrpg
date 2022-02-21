@@ -14,7 +14,7 @@
    [com.github.funkschy.jrpg.resources :as res]
    [com.github.funkschy.jrpg.text :as t])
   (:import
-   (com.github.funkschy.jrpg.engine Window)
+   (com.github.funkschy.jrpg.engine Window Action)
    (org.lwjgl.opengl GL11)))
 
 (defrecord GameState [ecs renderer input-fn inputs debug?])
@@ -28,9 +28,14 @@
     new-game-state))
 
 (def logical-dims [160 144])
+(def inputs {(int \W) Action/UP
+             (int \A) Action/LEFT
+             (int \S) Action/DOWN
+             (int \D) Action/RIGHT
+             (int \space) Action/INTERACT})
 
 (defn -main []
-  (let [^Window window (Window. 800 600 "JRPG" false)
+  (let [^Window window (Window. 800 600 "JRPG" inputs false)
         {vs "vertex.glsl" fs "fragment.glsl"} (res/load "vertex.glsl" "fragment.glsl")
         renderer (r/create-renderer window (String. ^bytes vs) (String. ^bytes fs) logical-dims)
 
