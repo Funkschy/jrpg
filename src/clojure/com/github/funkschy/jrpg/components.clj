@@ -5,5 +5,7 @@
 (defrecord Sprite [sprite w-scale h-scale layer])
 (defrecord Transform [position])
 (defrecord Velocity [dir speed])
-(defrecord Input [])
+(defrecord Input [delta-sum interacting?])
+(defrecord InteractionContent [content])
+(defrecord InteractionHitbox [aabb last-collision-content])
 (defrecord Hitbox [aabb])

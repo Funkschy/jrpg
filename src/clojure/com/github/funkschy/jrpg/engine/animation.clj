@@ -46,7 +46,7 @@
    (sprite-animation sprite-sheet start num-sprites 0.1))
 
   ([sprite-sheet start num-sprites sprite-change-time]
-   (let [{:keys [sprite-count-w sprite-count-h]} sprite-sheet
+   (let [{:keys [sprite-count-w]} sprite-sheet
          to-xy (fn [i] [(mod i sprite-count-w) (quot i sprite-count-w)])
          sprites (into [] (map (comp (partial apply at sprite-sheet) to-xy)
                                (range start (+ start num-sprites))))]

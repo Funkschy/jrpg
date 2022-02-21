@@ -10,7 +10,8 @@
 
 (def simple-spritesheets
   ["gb-font"
-   "hitbox"])
+   "hitbox"
+   "interaction-hitbox"])
 
 (defn- get-aseprite-path [filename]
   (str "pixelart/" filename ".aseprite"))
@@ -39,7 +40,7 @@
 
 (defn- run [aseprite-path assets arg-fn]
   (doseq [asset assets]
-    (let [{:keys [exit out err]}
+    (let [{:keys [exit err]}
           (apply sh aseprite-path (arg-fn asset))]
       (when-not (zero? exit)
         (println err)))))

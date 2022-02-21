@@ -1,23 +1,11 @@
 (ns com.github.funkschy.jrpg.graphics
   (:require [com.github.funkschy.jrpg.components]
+            [com.github.funkschy.jrpg.states :as sm]
             [com.github.funkschy.jrpg.engine.ecs :as s :refer [defsystem def-batchsystem]]
             [com.github.funkschy.jrpg.engine.render :as r]
             [com.github.funkschy.jrpg.engine.animation :as a]
             [com.github.funkschy.jrpg.engine.math.vector :refer [->Vec2]])
-  (:import [com.github.funkschy.jrpg.components Transform Sprite Animation Velocity AnimationStateMachine Hitbox]))
-
-(defn- next-state [state-machine args]
-  (apply (:transition-fn state-machine) (:current state-machine) args))
-
-(defn update-state-machine [state-machine & args]
-  (assoc state-machine :current (next-state state-machine args)))
-
-(defn current-state-data [state-machine]
-  ((:states state-machine) (:current state-machine)))
-
-(defn state-change? [state-machine & args]
-  (not= (next-state state-machine args)
-        (:current state-machine)))
+  (:import [com.github.funkschy.jrpg.components Transform Sprite Animation Velocity AnimationStateMachine Hitbox InteractionHitbox]))
 
 (defn walk-state-machine [idle down-anim up-anim left-anim right-anim]
   {:current :idle
@@ -38,43 +26,54 @@
        (->Vec2 -1 -1) :up
        (->Vec2 1 -1)  :up} dir))})
 
+                                        ;(defsystem draw-sprites
+                                        ;  [Transform Sprite]
+                                        ;  [[{{:keys [x y]} :position} {:keys [sprite w-scale h-scale]}] {:keys [renderer]} delta]
+                                        ;  (r/draw-sprite renderer sprite x y w-scale h-scale 0))
+
 (def-batchsystem draw-sprites
+  [ecs {:keys [renderer]} _ entities]
   [Transform Sprite]
-  [ecs {:keys [renderer]} delta entities]
   (doseq [e (sort-by #(:layer (s/component-of ecs % Sprite)) entities)]
     (let [{:keys [sprite w-scale h-scale]} (s/component-of ecs e Sprite)
           {{:keys [x y]} :position} (s/component-of ecs e Transform)]
       (r/draw-sprite renderer sprite x y (* w-scale (:src-w sprite)) (* h-scale (:src-h sprite))))))
 
+(defn- draw-hitbox [renderer hitbox-sprite {{:keys [x y]} :position} {{:keys [rel-pos size]} :aabb}]
+  (r/draw-sprite renderer
+                 hitbox-sprite
+                 (+ x (:x rel-pos) (/ (:x size) 2))
+                 (+ y (:y rel-pos) (/ (:y size) 2))
+                 (:x size)
+                 (:y size)))
+
 (defn draw-hitboxes-system [hitbox-sprite]
   (s/->SystemData
-   (fn [[{{:keys [x y]} :position} {{:keys [rel-pos size]} :aabb}] {:keys [renderer]} _]
-     (r/draw-sprite renderer
-                    hitbox-sprite
-                    (+ x (:x rel-pos) (/ (:x size) 2))
-                    (+ y (:y rel-pos) (/ (:y size) 2))
-                    (:x size)
-                    (:y size)))
+   (fn [[transform hitbox] {:keys [renderer debug?]} _]
+     (when debug?
+       (draw-hitbox renderer hitbox-sprite transform hitbox)))
    [Transform Hitbox]))
 
-                                        ; (defsystem draw-sprites
-                                        ;   [Transform Sprite]
-                                        ;   [[{{:keys [x y]} :position} {:keys [sprite w-scale h-scale]}] {:keys [renderer]} delta]
-                                        ;   (r/draw-sprite renderer sprite x y w-scale h-scale 0))
+(defn draw-interaction-hitboxes-system [hitbox-sprite]
+  (s/->SystemData
+   (fn [[transform interaction-hitbox] {:keys [renderer debug?]} _]
+     (when debug?
+       (draw-hitbox renderer hitbox-sprite transform interaction-hitbox)))
+   [Transform InteractionHitbox]))
 
 (defsystem update-animations
-  [Animation Sprite]
   [[{:keys [animation] :as anim-comp} sprite] _ delta]
+  [Animation Sprite]
   (let [updated-animation (a/update animation delta)]
     [(assoc anim-comp :animation updated-animation)
      (assoc sprite :sprite (a/as-sprite updated-animation))]))
 
 (defsystem update-velocity-state-machine
+  [[{:keys [state-machine] :as sm} vel sprite old-animation] _ _]
   [AnimationStateMachine Velocity Sprite Animation]
-  [[{:keys [state-machine] :as sm} vel sprite old-animation] _ delta]
-  (if (state-change? state-machine vel)
-    (let [new-state-machine (update-state-machine state-machine vel)
-          {:keys [animation flip-h?]} (current-state-data new-state-machine)
+  (if (sm/state-change? state-machine vel)
+    (let [new-state-machine (sm/update-state-machine state-machine vel)
+          {:keys [animation flip-h?]} (sm/current-state-data new-state-machine)
           flip-fn (comp (if flip-h? - +) #(Math/abs ^float %))]
       [(assoc sm :state-machine new-state-machine)
        vel

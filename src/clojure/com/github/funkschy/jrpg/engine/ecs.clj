@@ -90,8 +90,23 @@
     (apply-updates ecs (run-system ecs data delta system))
     (system ecs data delta)))
 
-(defn update-component [ecs e component-type instance]
-  (apply-update ecs e component-type instance))
+(defn assoc-component
+  ([ecs e component-type instance]
+   (apply-update ecs e component-type instance))
+  ([ecs e component-type k value]
+   (let [instance (component-of ecs e component-type)
+         updated  (assoc instance k value)]
+     (assoc-component ecs e component-type updated))))
+
+(defn assoc-in-component [ecs e component-type ks value]
+  (let [instance (component-of ecs e component-type)
+        updated  (assoc-in instance ks value)]
+    (assoc-component ecs e component-type updated)))
+
+(defn update-component [ecs e component-type k f & args]
+  (let [instance (component-of ecs e component-type)
+        updated  (apply update instance k f args)]
+    (assoc-component ecs e component-type updated)))
 
 (defn run-systems [ecs data timestamp]
   (let [delta   (double (/ (- timestamp (:last-timestamp ecs)) 1000))
@@ -100,7 +115,7 @@
                         (:systems ecs))]
     (persistent! (assoc! updated :last-timestamp timestamp))))
 
-(defmacro def-batchsystem [system-name component-types arglist & exprs]
+(defmacro def-batchsystem [system-name arglist component-types & exprs]
   (assert (= 4 (count arglist)) "arglist should be [ecs data delta entities]")
   `(def ~system-name
      (fn [ecs# data# delta#]
@@ -110,8 +125,7 @@
                                         ; if the function returned nil, we just return the old ecs
              ecs#)))))
 
-(defmacro defsystem [system-name component-types arglist & exprs]
+(defmacro defsystem [system-name arglist component-types & exprs]
   (assert (= 3 (count arglist)) "arglist should be [components data delta]")
   `(def ~system-name
      (SystemData. (fn ~arglist ~@exprs) ~component-types)))
-

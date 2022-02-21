@@ -1,12 +1,11 @@
 (ns com.github.funkschy.jrpg.engine.render
-  (:require [com.github.funkschy.jrpg.engine.math.m4 :as m4]
-            [clojure.java.io :refer [resource]])
+  (:require [com.github.funkschy.jrpg.engine.math.m4 :as m4])
   (:import [com.github.funkschy.jrpg.engine Window]
-           [org.lwjgl.opengl GL30]
-           [org.lwjgl.system MemoryStack MemoryUtil]
-           [org.lwjgl.stb STBImage]
+           [java.nio ByteBuffer]
            [org.lwjgl BufferUtils]
-           [java.nio ByteBuffer]))
+           [org.lwjgl.opengl GL30]
+           [org.lwjgl.stb STBImage]
+           [org.lwjgl.system MemoryStack MemoryUtil]))
 
 (defrecord TextureInfo [texture width height repeat?])
 (defrecord Sprite [texture-info src-x src-y src-w src-h])
@@ -18,14 +17,11 @@
   (clear-screen [this])
   (screen-dims [this] "Returns [width height] of the screen")
   (draw-sprite [this sprite dest-x dest-y]
-               [this sprite dest-x dest-y dest-w dest-h]
-               "Draw (part of) a texture to the screen at the specified location")
+    [this sprite dest-x dest-y dest-w dest-h]
+    "Draw (part of) a texture to the screen at the specified location")
   (create-texture [this img repeat?] "Create a texture from an image. Returns a TextureInfo instance"))
 
 (defrecord OpenGLRenderer [^Window window program attribs unifs buffers logical-dims])
-
-(defn degrees-to-radians [degrees]
-  (/ (* degrees Math/PI) 180.0))
 
 (defn- orthographic-m4 [w h]
   (m4/orthographic 0 w h 0 400 -400))
@@ -39,8 +35,8 @@
         real-aspect (/ screen-w screen-h)
 
         scale (int (max 1 (if (> want-aspect real-aspect)
-                              (/ screen-w logical-w)
-                              (/ screen-h logical-h))))
+                            (/ screen-w logical-w)
+                            (/ screen-h logical-h))))
 
         viewport-w (int (Math/floor (* logical-w scale)))
         viewport-h (int (Math/floor (* logical-h scale)))
@@ -51,7 +47,7 @@
 (extend-type OpenGLRenderer
   Renderer
   (clear-screen [{:keys [^Window window]}]
-    ; tell webgl how to convert clip space coords into pixels (screen space)
+                                        ; tell webgl how to convert clip space coords into pixels (screen space)
     (. window clear))
 
   (screen-dims [{^Window window :window}]
@@ -71,17 +67,17 @@
                                                [(/ dest-w src-w) (/ dest-h src-h)]
                                                [1 1])
 
-           ; because texture coords go from 0 to 1 and our coords are a unit quad, we can just
-           ; scale the coord quad
+                                        ; because texture coords go from 0 to 1 and our coords are a unit quad, we can just
+                                        ; scale the coord quad
            texture-matrix (m4/multiply (m4/translation (/ src-x width) (/ src-y height) 0)
                                        (m4/scale (* tex-coord-mul-w (/ src-w width))
                                                  (* tex-coord-mul-h (/ src-h height)) 1))
            matrix (m4/multiply (orthographic-m4 vp-w vp-h)
-                               ; move origin into the center of the screen
+                                        ; move origin into the center of the screen
                                (m4/translation (/ vp-w 2) (/ vp-h 2) 0)
                                (m4/translation (* scale dest-x) (* scale dest-y) 0)
                                (m4/scale       (* scale dest-w) (* scale dest-h) 1)
-                               ; move origin to the middle of the sprite (important for flipping)
+                                        ; move origin to the middle of the sprite (important for flipping)
                                (m4/translation -0.5 -0.5 0))]
 
        (GL30/glViewport vp-x vp-y vp-w vp-h)
@@ -100,7 +96,7 @@
        (GL30/glUniformMatrix4fv ^int (unifs "u_matrix") false (m4/to-buf matrix))
        (GL30/glUniformMatrix4fv ^int (unifs "u_texture_matrix") false (m4/to-buf texture-matrix))
 
-       ; use texture at slot 0
+                                        ; use texture at slot 0
        (GL30/glUniform1i (unifs "u_texture") 0)
        (GL30/glDrawArrays GL30/GL_TRIANGLES 0 6))))
 
@@ -120,7 +116,7 @@
             texture (GL30/glGenTextures)]
 
         (GL30/glBindTexture GL30/GL_TEXTURE_2D texture)
-        ; each component is 1 byte
+                                        ; each component is 1 byte
         (GL30/glPixelStorei GL30/GL_UNPACK_ALIGNMENT 1)
         (when-not repeat?
           (GL30/glTexParameteri GL30/GL_TEXTURE_2D GL30/GL_TEXTURE_WRAP_S GL30/GL_CLAMP_TO_EDGE)
@@ -177,22 +173,22 @@
   (let [vao (GL30/glGenVertexArrays)]
     (GL30/glBindVertexArray vao)
     (reduce
-      (fn [m n]
-        (let [buffer-vbo (GL30/glGenBuffers)
-              buffer (-> (BufferUtils/createFloatBuffer (count unit-quad))
-                         (.put ^floats unit-quad)
-                         (.flip))]
-          (GL30/glBindBuffer GL30/GL_ARRAY_BUFFER buffer-vbo)
-          (GL30/glBufferData GL30/GL_ARRAY_BUFFER buffer GL30/GL_STATIC_DRAW)
-          (assoc m n buffer-vbo)))
-      {}
-      names)))
+     (fn [m n]
+       (let [buffer-vbo (GL30/glGenBuffers)
+             buffer (-> (BufferUtils/createFloatBuffer (count unit-quad))
+                        (.put ^floats unit-quad)
+                        (.flip))]
+         (GL30/glBindBuffer GL30/GL_ARRAY_BUFFER buffer-vbo)
+         (GL30/glBufferData GL30/GL_ARRAY_BUFFER buffer GL30/GL_STATIC_DRAW)
+         (assoc m n buffer-vbo)))
+     {}
+     names)))
 
 (defn create-renderer [window vs-src fs-src logical-dims]
   (let [vs (create-vertex-shader vs-src)
         fs (create-fragment-shader fs-src)
         program (create-program vs fs)
-        ; lookup locations in init code, not in render loop
+                                        ; lookup locations in init code, not in render loop
         attribs (find-attrib-locations program "a_position" "a_texcoord")
         unifs (find-unif-locations program "u_matrix" "u_texture" "u_texture_matrix")
         buffers (create-unit-quad-buffers "position" "texcoord")]

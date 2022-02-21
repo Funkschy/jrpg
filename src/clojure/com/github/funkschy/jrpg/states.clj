@@ -9,7 +9,6 @@
 (defn current-state-data [state-machine]
   ((:states state-machine) (:current state-machine)))
 
-(defn state-change? [state-machine args]
+(defn state-change? [state-machine & args]
   (not= (next-state state-machine args)
         (:current state-machine)))
-
