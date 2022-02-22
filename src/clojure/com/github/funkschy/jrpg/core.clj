@@ -94,6 +94,7 @@
                 (s/add-system g/draw-sprites)
                 (s/add-system (g/draw-interaction-hitboxes-system interaction-hitbox))
                 (s/add-system (g/draw-hitboxes-system hitbox))
+                (s/add-system (g/draw-textbox-system dialog-bg font))
 
                 (s/add-components wall
                                   (c/->Hitbox (->AABB (->Vec2 -80 -15) (->Vec2 160 20)))
@@ -124,7 +125,7 @@
                                   (c/->Velocity (->Vec2 0 0) 100.0)
                                   (c/->Input 0 false)
                                   (c/->InteractionHitbox (->AABB (->Vec2 -16 -16) (->Vec2 32 32)))
-                                  (c/->CurrentInteraction false nil)
+                                  (c/->CurrentInteraction nil)
                                   (c/->Transform (->Vec2 0 0))
                                   (c/->Hitbox (->AABB (->Vec2 -8 -8) (->Vec2 16 16)))
                                   (c/->AnimationStateMachine walk-sm)

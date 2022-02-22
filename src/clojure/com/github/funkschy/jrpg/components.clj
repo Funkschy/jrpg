@@ -7,6 +7,6 @@
 (defrecord Velocity [dir speed])
 (defrecord Input [delta-sum interacting?])
 (defrecord InteractionContent [content]) ; a potential interaction (on the npc)
-(defrecord CurrentInteraction [running? content]) ; the running interaction (on the player)
+(defrecord CurrentInteraction [content]) ; the running interaction (on the player)
 (defrecord InteractionHitbox [aabb])
 (defrecord Hitbox [aabb])

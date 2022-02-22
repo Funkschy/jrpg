@@ -1,11 +1,13 @@
 (ns com.github.funkschy.jrpg.graphics
-  (:require [com.github.funkschy.jrpg.components]
-            [com.github.funkschy.jrpg.states :as sm]
-            [com.github.funkschy.jrpg.engine.ecs :as s :refer [defsystem def-batchsystem]]
-            [com.github.funkschy.jrpg.engine.render :as r]
-            [com.github.funkschy.jrpg.engine.animation :as a]
-            [com.github.funkschy.jrpg.engine.math.vector :refer [->Vec2]])
-  (:import [com.github.funkschy.jrpg.components Transform Sprite Animation Velocity AnimationStateMachine Hitbox InteractionHitbox]))
+  (:require
+   [com.github.funkschy.jrpg.components]
+   [com.github.funkschy.jrpg.engine.animation :as a]
+   [com.github.funkschy.jrpg.engine.ecs :as s :refer [def-batchsystem defsystem]]
+   [com.github.funkschy.jrpg.engine.math.vector :refer [->Vec2]]
+   [com.github.funkschy.jrpg.engine.render :as r]
+   [com.github.funkschy.jrpg.states :as sm])
+  (:import
+   [com.github.funkschy.jrpg.components Transform Sprite Animation Velocity AnimationStateMachine Hitbox InteractionHitbox CurrentInteraction Input]))
 
 (defn walk-state-machine [idle down-anim up-anim left-anim right-anim]
   {:current :idle
@@ -60,6 +62,14 @@
      (when debug?
        (draw-hitbox renderer hitbox-sprite transform interaction-hitbox)))
    [Transform InteractionHitbox]))
+
+(defn draw-textbox-system [textbox-sprite font]
+  (s/->SystemData
+   (fn [[{:keys [interacting?]} {:keys [content]}] {:keys [renderer]} _]
+     (when interacting?
+       (println content)
+       (r/draw-sprite renderer textbox-sprite 0 45)))
+   [Input CurrentInteraction]))
 
 (defsystem update-animations
   [[{:keys [animation] :as anim-comp} sprite] _ delta]

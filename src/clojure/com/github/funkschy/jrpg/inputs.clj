@@ -30,11 +30,11 @@
   [[{:keys [delta-sum] :as input} {:keys [content] :as interaction}] {:keys [inputs]} delta]
   [Input CurrentInteraction]
   (if (and (> delta-sum 1) (inputs Action/INTERACT) content)
-    (let [updated (update interaction :content sm/update-state-machine)
-          value   (sm/current-state-data (:content updated))]
-      (prn value)
-      [(-> input (assoc :delta-sum 0) (assoc :interacting? (boolean value)))
-       (assoc updated :running? (boolean value))])
+    (let [updated  (update interaction :content sm/update-state-machine)
+          value    (sm/current-state-data (:content updated))
+          ongoing? (boolean value)]
+      [(-> input (assoc :delta-sum 0) (assoc :interacting? ongoing?))
+       updated])
 
     [(update input :delta-sum + delta) interaction]))
 
@@ -57,15 +57,15 @@
        (first)))
 
 (defn- update-current-interaction [hitbox-ents ecs a]
-  (let [ongoing-interaction (s/component-of ecs a CurrentInteraction)]
-    (if-not (:running? ongoing-interaction)  ; don't overwrite an already started interaction
-      (let[collision-ent (first-collision ecs a hitbox-ents)
-           content       (:content (s/component-of ecs collision-ent InteractionContent))]
-        (s/assoc-component ecs a CurrentInteraction :content content))
-      ecs)))
+  (let[collision-ent (first-collision ecs a hitbox-ents)
+       content       (:content (s/component-of ecs collision-ent InteractionContent))]
+    (s/assoc-component ecs a CurrentInteraction :content content)))
 
 (def-batchsystem check-possible-interactions
   [ecs _ _ entities]
   [Transform InteractionHitbox CurrentInteraction Input Velocity]
-  (let [hitbox-ents (s/entities-with-components ecs #{InteractionHitbox InteractionContent Transform})]
-    (reduce (partial update-current-interaction hitbox-ents) ecs entities)))
+  (let [hitbox-ents (s/entities-with-components ecs #{InteractionHitbox InteractionContent Transform})
+        in-interaction? (fn [e] (:interacting? (s/component-of ecs e Input)))]
+    (reduce (partial update-current-interaction hitbox-ents)
+            ecs
+            (remove in-interaction? entities)))) ;  don't overwrite an already started interaction
