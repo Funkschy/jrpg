@@ -3,7 +3,8 @@
 
 (def animation-spritesheets
   ["cat"
-   "girl"])
+   "girl"
+   "grandma"])
 
 (def sliced-spritesheets
   ["background"])
@@ -11,6 +12,7 @@
 (def simple-spritesheets
   ["gb-font"
    "hitbox"
+   "dialog-bg"
    "interaction-hitbox"])
 
 (defn- get-aseprite-path [filename]

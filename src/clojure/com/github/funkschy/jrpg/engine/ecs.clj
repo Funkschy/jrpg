@@ -7,6 +7,9 @@
 
 (defrecord SystemData [system-fn component-types])
 
+(defprotocol EcsSystem
+  (execute [system ecs data delta]))
+
 (defn create-ecs [now]
   {:last-timestamp     now
    :entity-components  {}   ; entity         -> {component-type -> instance}
@@ -44,12 +47,13 @@
                   (transient (ecs :component-entities))
                   component-types))))
 
-(defn add-components [ecs entity & components]
-  (let [old-comps (get-in ecs [:entity-components entity])
-        new-comps (persistent! (reduce #(assoc! %1 (type %2) %2) (transient old-comps) components))]
-    (-> ecs
-        (assoc-in [:entity-components entity] new-comps)
-        (update-component-entities entity components))))
+  (defn add-components [ecs entity & components]
+    (assert (get-in ecs [:entity-components entity]) "trying to add components to non existing entity")
+    (let [old-comps (get-in ecs [:entity-components entity])
+          new-comps (persistent! (reduce #(assoc! %1 (type %2) %2) (transient old-comps) components))]
+      (-> ecs
+          (assoc-in [:entity-components entity] new-comps)
+          (update-component-entities entity components))))
 
 (defn remove-component [ecs entity component-type]
   (-> ecs
@@ -74,7 +78,9 @@
        (entities-with-components ecs (set component-types))))
 
 (defn- apply-update [ecs e ty instance]
-  (assoc! ecs :entity-components (assoc-in (:entity-components ecs) [e ty] instance)))
+  (if instance
+    (assoc-in ecs [:entity-components e ty] instance)
+    (remove-component ecs e ty)))
 
 (defn- apply-updates [ecs updates]
   (reduce (fn [ecs [e types instances]]
@@ -85,10 +91,13 @@
           ecs
           updates))
 
-(defn- run-any-system [data delta ecs system]
-  (if (= (class system) SystemData)
-    (apply-updates ecs (run-system ecs data delta system))
-    (system ecs data delta)))
+(extend-protocol EcsSystem
+  clojure.lang.AFn
+  (execute [system ecs data delta]
+    (system ecs data delta))
+  SystemData
+  (execute [system ecs data delta]
+    (apply-updates ecs (run-system ecs data delta system))))
 
 (defn assoc-component
   ([ecs e component-type instance]
@@ -110,10 +119,10 @@
 
 (defn run-systems [ecs data timestamp]
   (let [delta   (double (/ (- timestamp (:last-timestamp ecs)) 1000))
-        updated (reduce (partial run-any-system data delta)
-                        (transient ecs)
+        updated (reduce #(execute %2 %1 data delta)
+                        ecs
                         (:systems ecs))]
-    (persistent! (assoc! updated :last-timestamp timestamp))))
+    (assoc updated :last-timestamp timestamp)))
 
 (defmacro def-batchsystem [system-name arglist component-types & exprs]
   (assert (= 4 (count arglist)) "arglist should be [ecs data delta entities]")

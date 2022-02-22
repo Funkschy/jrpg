@@ -6,7 +6,7 @@
    [com.github.funkschy.jrpg.engine.math.vector :refer [->Vec2 add]]
    [com.github.funkschy.jrpg.states :as sm])
   (:import
-   [com.github.funkschy.jrpg.components Velocity Input InteractionHitbox Transform InteractionContent]
+   [com.github.funkschy.jrpg.components Velocity Input InteractionHitbox Transform InteractionContent CurrentInteraction]
    [com.github.funkschy.jrpg.engine Action]))
 
 (def ^:private updates
@@ -27,37 +27,45 @@
     [input (assoc velocity :dir (->Vec2 0 0))])) ; moving while interacting is rude
 
 (defsystem handle-interactions
-  [[{:keys [delta-sum] :as input} {:keys [last-collision-content] :as hit}] {:keys [inputs]} delta]
-  [Input InteractionHitbox]
-  (if (and (> delta-sum 1) (inputs Action/INTERACT) last-collision-content)
-    (let [updated (update-in hit [:last-collision-content :content] sm/update-state-machine)
-          value   (sm/current-state-data (get-in updated [:last-collision-content :content]))]
+  [[{:keys [delta-sum] :as input} {:keys [content] :as interaction}] {:keys [inputs]} delta]
+  [Input CurrentInteraction]
+  (if (and (> delta-sum 1) (inputs Action/INTERACT) content)
+    (let [updated (update interaction :content sm/update-state-machine)
+          value   (sm/current-state-data (:content updated))]
       (prn value)
-      [(-> input (assoc :delta-sum 0) (assoc :interacting? (boolean value))) updated])
-    [(update input :delta-sum + delta) hit]))
+      [(-> input (assoc :delta-sum 0) (assoc :interacting? (boolean value)))
+       (assoc updated :running? (boolean value))])
 
-(defn- check-interaction-collisions [a ecs b]
-  (if (not= a b)
-    (let [a-pos  (:position (s/component-of ecs a Transform))
-          {a-aabb :aabb curr-content :last-collision-content} (s/component-of ecs a InteractionHitbox)
-          curr-content (:content curr-content)
-          has-ongoing-interaction? (and curr-content (sm/current-state-data curr-content))
+    [(update input :delta-sum + delta) interaction]))
 
-          b-pos  (:position (s/component-of ecs b Transform))
-          b-aabb (:aabb (s/component-of ecs b InteractionHitbox))
-          a-abs-pos (add a-pos (:rel-pos a-aabb))
-          b-abs-pos (add b-pos (:rel-pos b-aabb))
-          collision (apply min (collisions a-abs-pos a-aabb b-abs-pos b-aabb))
-          coll-content  (if (zero? collision) nil (s/component-of ecs b InteractionContent))]
-      (if-not has-ongoing-interaction? ; don't overwrite an already started interaction
-        (s/assoc-component ecs a InteractionHitbox :last-collision-content coll-content)
-        ecs))
-    ecs))
+(defn- get-entity-collision [ecs a b]
+  (let [a-pos  (:position (s/component-of ecs a Transform))
+        {a-aabb :aabb} (s/component-of ecs a InteractionHitbox)
+        b-pos  (:position (s/component-of ecs b Transform))
+        b-aabb (:aabb (s/component-of ecs b InteractionHitbox))
+        a-abs-pos (add a-pos (:rel-pos a-aabb))
+        b-abs-pos (add b-pos (:rel-pos b-aabb))
+        collision (apply min (collisions a-abs-pos a-aabb b-abs-pos b-aabb))]
+    (when-not (zero? collision)
+      b)))
+
+(defn- first-collision [ecs a hitbox-ents]
+  (->> hitbox-ents
+       (filter (partial not= a))
+       (map (partial get-entity-collision ecs a))
+       (remove nil?)
+       (first)))
+
+(defn- update-current-interaction [hitbox-ents ecs a]
+  (let [ongoing-interaction (s/component-of ecs a CurrentInteraction)]
+    (if-not (:running? ongoing-interaction)  ; don't overwrite an already started interaction
+      (let[collision-ent (first-collision ecs a hitbox-ents)
+           content       (:content (s/component-of ecs collision-ent InteractionContent))]
+        (s/assoc-component ecs a CurrentInteraction :content content))
+      ecs)))
 
 (def-batchsystem check-possible-interactions
   [ecs _ _ entities]
-  [Transform InteractionHitbox Input Velocity]
+  [Transform InteractionHitbox CurrentInteraction Input Velocity]
   (let [hitbox-ents (s/entities-with-components ecs #{InteractionHitbox InteractionContent Transform})]
-    (reduce (fn [ecs a] (reduce (partial check-interaction-collisions a) ecs hitbox-ents))
-            ecs
-            entities)))
+    (reduce (partial update-current-interaction hitbox-ents) ecs entities)))

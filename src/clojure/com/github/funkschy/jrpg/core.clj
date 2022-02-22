@@ -51,11 +51,13 @@
         {vs "vertex.glsl" fs "fragment.glsl"} (res/load "vertex.glsl" "fragment.glsl")
         renderer (r/create-renderer window (String. ^bytes vs) (String. ^bytes fs) logical-dims)
 
-        {:strs [floor-light wall-light]} (res/load-textures renderer true "floor-light" "wall-light")
+        {:strs [floor-light wall-light dialog-bg]}
+        (res/load-textures renderer true "floor-light" "wall-light" "dialog-bg")
 
-        cat-idle   (res/load-animations renderer "cat")
+        cat-idle   ((res/load-animations renderer "cat") "idle")
         girl-anims (map (res/load-animations renderer "girl")
                         ["idle" "walk-down" "walk-up" "walk-horizontal" "walk-horizontal"])
+        grandma-idle ((res/load-animations renderer "grandma") "idle")
 
         walk-sm (apply g/walk-state-machine girl-anims)
 
@@ -65,9 +67,11 @@
         font (t/load-font renderer "gb-font" 7)
 
         cat-monolog (monolog-state-machine "Moin meister" "Wie gehts?")
+        grandma-monolog (monolog-state-machine "You should go outside for once" "Sup bruh")
 
         player (s/create-entity)
         sly-cat (s/create-entity)
+        grandma (s/create-entity)
         floor (s/create-entity)
         wall (s/create-entity)
 
@@ -78,6 +82,7 @@
                 (s/add-entity sly-cat)
                 (s/add-entity floor)
                 (s/add-entity wall)
+                (s/add-entity grandma)
 
                 (s/add-system i/handle-movements)
                 (s/add-system p/update-position)
@@ -104,13 +109,22 @@
                                   (c/->Animation cat-idle false)
                                   (c/->Hitbox (->AABB (->Vec2 -8 -8) (->Vec2 16 16)))
                                   (c/->InteractionContent cat-monolog)
-                                  (c/->InteractionHitbox (->AABB (->Vec2 -16 -16) (->Vec2 32 32)) nil)
+                                  (c/->InteractionHitbox (->AABB (->Vec2 -16 -16) (->Vec2 32 32)))
+                                  (c/->Sprite nil 1 1 2))
+
+                (s/add-components grandma
+                                  (c/->Transform (->Vec2 50.0 30.0))
+                                  (c/->Animation grandma-idle false)
+                                  (c/->Hitbox (->AABB (->Vec2 -8 -8) (->Vec2 16 16)))
+                                  (c/->InteractionContent grandma-monolog)
+                                  (c/->InteractionHitbox (->AABB (->Vec2 -16 -16) (->Vec2 32 32)))
                                   (c/->Sprite nil 1 1 2))
 
                 (s/add-components player
                                   (c/->Velocity (->Vec2 0 0) 100.0)
                                   (c/->Input 0 false)
-                                  (c/->InteractionHitbox (->AABB (->Vec2 -16 -16) (->Vec2 32 32)) nil)
+                                  (c/->InteractionHitbox (->AABB (->Vec2 -16 -16) (->Vec2 32 32)))
+                                  (c/->CurrentInteraction false nil)
                                   (c/->Transform (->Vec2 0 0))
                                   (c/->Hitbox (->AABB (->Vec2 -8 -8) (->Vec2 16 16)))
                                   (c/->AnimationStateMachine walk-sm)
