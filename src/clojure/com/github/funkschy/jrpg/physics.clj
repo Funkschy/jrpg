@@ -5,7 +5,7 @@
    [com.github.funkschy.jrpg.engine.math.vector :refer [add normalized scale]]
    [com.github.funkschy.jrpg.engine.aabb :refer [collisions]])
   (:import
-   [com.github.funkschy.jrpg.components Velocity Transform Hitbox InteractionHitbox InteractionContent Input]))
+   [com.github.funkschy.jrpg.components Velocity Transform Hitbox]))
 
 
 (defn- resolve-collision
