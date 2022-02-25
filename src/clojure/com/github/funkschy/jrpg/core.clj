@@ -64,9 +64,9 @@
         hitbox (a/at (res/load-spritesheet renderer "hitbox" 16) 0 0)
         interaction-hitbox (a/at (res/load-spritesheet renderer "interaction-hitbox" 16) 0 0)
 
-        font (t/load-font renderer "gb-font" 7)
+        font (t/load-font renderer "gb-font" 7 0)
 
-        cat-monolog (monolog-state-machine "Moin meister" "Wie gehts?")
+        cat-monolog (monolog-state-machine "AAAAAAAAAAAAAAAAAAAA BBBBBBBBBBBBBBBBBB CCCCCCCCCCCCCCCCCC DDDDDDDDDDDDDDDDDD" "Wie gehts?")
         grandma-monolog (monolog-state-machine "You should go outside for once" "Sup bruh")
 
         player (s/create-entity)

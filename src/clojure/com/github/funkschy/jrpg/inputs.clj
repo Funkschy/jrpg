@@ -26,10 +26,12 @@
          (vector input))
     [input (assoc velocity :dir (->Vec2 0 0))])) ; moving while interacting is rude
 
+(def interaction-cooldown 0.5)
+
 (defsystem handle-interactions
   [[{:keys [delta-sum] :as input} {:keys [content] :as interaction}] {:keys [inputs]} delta]
   [Input CurrentInteraction]
-  (if (and (> delta-sum 1) (inputs Action/INTERACT) content)
+  (if (and (> delta-sum interaction-cooldown) (inputs Action/INTERACT) content)
     (let [updated  (update interaction :content sm/update-state-machine)
           value    (sm/current-state-data (:content updated))
           ongoing? (boolean value)]

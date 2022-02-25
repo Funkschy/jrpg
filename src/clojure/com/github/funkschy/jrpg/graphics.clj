@@ -5,7 +5,8 @@
    [com.github.funkschy.jrpg.engine.ecs :as s :refer [def-batchsystem defsystem]]
    [com.github.funkschy.jrpg.engine.math.vector :refer [->Vec2]]
    [com.github.funkschy.jrpg.engine.render :as r]
-   [com.github.funkschy.jrpg.states :as sm])
+   [com.github.funkschy.jrpg.states :as sm]
+   [com.github.funkschy.jrpg.text :as t])
   (:import
    [com.github.funkschy.jrpg.components Transform Sprite Animation Velocity AnimationStateMachine Hitbox InteractionHitbox CurrentInteraction Input]))
 
@@ -67,8 +68,10 @@
   (s/->SystemData
    (fn [[{:keys [interacting?]} {:keys [content]}] {:keys [renderer]} _]
      (when interacting?
-       (println content)
-       (r/draw-sprite renderer textbox-sprite 0 45)))
+       (r/draw-sprite renderer textbox-sprite 0 45)
+       (doseq [lines        (t/split-lines font (sm/current-state-data content) -68 31 144 30)
+               [sprite x y] lines]
+         (r/draw-sprite renderer sprite x y))))
    [Input CurrentInteraction]))
 
 (defsystem update-animations
