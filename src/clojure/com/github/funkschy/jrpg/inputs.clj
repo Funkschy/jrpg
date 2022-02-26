@@ -6,8 +6,8 @@
    [com.github.funkschy.jrpg.engine.math.vector :refer [->Vec2 add]]
    [com.github.funkschy.jrpg.states :as sm])
   (:import
-   [com.github.funkschy.jrpg.components Velocity Input InteractionHitbox Transform InteractionContent CurrentInteraction]
-   [com.github.funkschy.jrpg.engine Action]))
+   [com.github.funkschy.jrpg Action]
+   [com.github.funkschy.jrpg.components Velocity Input InteractionHitbox Transform InteractionContent CurrentInteraction]))
 
 (def ^:private updates
   {Action/UP    (->Vec2 0 -1)
@@ -24,7 +24,7 @@
          (reduce add (->Vec2 0 0))
          (assoc velocity :dir)
          (vector input))
-    [input (assoc velocity :dir (->Vec2 0 0))])) ; moving while interacting is rude
+    [input (assoc velocity :dir (->Vec2 0 0))]))            ; moving while interacting is rude
 
 (def interaction-cooldown 0.5)
 
@@ -32,8 +32,8 @@
   [[{:keys [delta-sum] :as input} {:keys [content] :as interaction}] {:keys [inputs]} delta]
   [Input CurrentInteraction]
   (if (and (> delta-sum interaction-cooldown) (inputs Action/INTERACT) content)
-    (let [updated  (update interaction :content sm/update-state-machine)
-          value    (sm/current-state-data (:content updated))
+    (let [updated (update interaction :content sm/update-state-machine)
+          value (sm/current-state-data (:content updated))
           ongoing? (boolean value)]
       [(-> input (assoc :delta-sum 0) (assoc :interacting? ongoing?))
        updated])
@@ -41,9 +41,9 @@
     [(update input :delta-sum + delta) interaction]))
 
 (defn- get-entity-collision [ecs a b]
-  (let [a-pos  (:position (s/component-of ecs a Transform))
+  (let [a-pos (:position (s/component-of ecs a Transform))
         {a-aabb :aabb} (s/component-of ecs a InteractionHitbox)
-        b-pos  (:position (s/component-of ecs b Transform))
+        b-pos (:position (s/component-of ecs b Transform))
         b-aabb (:aabb (s/component-of ecs b InteractionHitbox))
         a-abs-pos (add a-pos (:rel-pos a-aabb))
         b-abs-pos (add b-pos (:rel-pos b-aabb))
@@ -59,8 +59,8 @@
        (first)))
 
 (defn- update-current-interaction [hitbox-ents ecs a]
-  (let[collision-ent (first-collision ecs a hitbox-ents)
-       content       (:content (s/component-of ecs collision-ent InteractionContent))]
+  (let [collision-ent (first-collision ecs a hitbox-ents)
+        content (:content (s/component-of ecs collision-ent InteractionContent))]
     (s/assoc-component ecs a CurrentInteraction :content content)))
 
 (def-batchsystem check-possible-interactions
@@ -70,4 +70,4 @@
         in-interaction? (fn [e] (:interacting? (s/component-of ecs e Input)))]
     (reduce (partial update-current-interaction hitbox-ents)
             ecs
-            (remove in-interaction? entities)))) ;  don't overwrite an already started interaction
+            (remove in-interaction? entities))))            ;  don't overwrite an already started interaction

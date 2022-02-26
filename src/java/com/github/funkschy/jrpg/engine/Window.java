@@ -5,20 +5,19 @@ import org.lwjgl.glfw.GLFWErrorCallback;
 import org.lwjgl.glfw.GLFWVidMode;
 import org.lwjgl.opengl.GL;
 import org.lwjgl.system.MemoryUtil;
-import java.util.Map;
 
 import static org.lwjgl.glfw.GLFW.*;
 import static org.lwjgl.opengl.GL11.*;
 
 public class Window {
     private final long windowHandle;
-    private final Input input;
+    private final InputHandler input;
 
     private int width;
     private int height;
 
-    public Window(int initWidth, int initHeight, String title, Map<Integer, Action> inputMappings, boolean vsync) {
-        input = new Input(inputMappings);
+    public Window(int initWidth, int initHeight, String title, InputHandler handler, boolean vsync) {
+        input = handler;
         width = initWidth;
         height = initHeight;
 
@@ -54,6 +53,19 @@ public class Window {
             }
         });
 
+        // joystick connected on startup
+        if (glfwJoystickPresent(GLFW_JOYSTICK_1) && glfwJoystickIsGamepad(GLFW_JOYSTICK_1)) {
+            input.gamepadConnected(GLFW_JOYSTICK_1);
+        }
+
+        glfwSetJoystickCallback((jid, event) -> {
+            if (event == GLFW_CONNECTED && glfwJoystickIsGamepad(jid)) {
+                input.gamepadConnected(jid);
+            } else if (event == GLFW_DISCONNECTED) {
+                input.joystickDisconnected(jid);
+            }
+        });
+
         GLFWVidMode vidMode = glfwGetVideoMode(glfwGetPrimaryMonitor());
         if (vidMode != null) {
             // center window
@@ -81,10 +93,6 @@ public class Window {
 
     public boolean shouldClose() {
         return glfwWindowShouldClose(windowHandle);
-    }
-
-    public boolean isKeyPressed(int keyCode) {
-        return glfwGetKey(windowHandle, keyCode) == GLFW_PRESS;
     }
 
     public void setClearColor(float r, float g, float b, float alpha) {

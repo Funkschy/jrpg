@@ -1,4 +1,4 @@
-package com.github.funkschy.jrpg.engine;
+package com.github.funkschy.jrpg;
 
 public enum Action {
     UP, DOWN, LEFT, RIGHT, INTERACT, DEBUG

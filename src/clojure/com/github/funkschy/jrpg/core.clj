@@ -14,14 +14,16 @@
    [com.github.funkschy.jrpg.resources :as res]
    [com.github.funkschy.jrpg.text :as t])
   (:import
-   (com.github.funkschy.jrpg.engine Window Action)
+   (com.github.funkschy.jrpg Action)
+   (com.github.funkschy.jrpg ActionHandler)
+   (com.github.funkschy.jrpg.engine Window GamepadButton)
    (org.lwjgl.opengl GL11)))
 
 (defrecord GameState [ecs renderer input-fn inputs debug? debug-enabled-timestamp])
 
 (defn- debug-state [gamestate timestamp pressed?]
   (let [dbg-ts (:debug-enabled-timestamp gamestate)
-        can-debug? (> (- timestamp dbg-ts) 100)
+        can-debug? (> (- timestamp dbg-ts) 500)
         change-debug? (and can-debug? pressed?)
         should-debug? ((if change-debug? not identity) (:debug? gamestate))]
     [should-debug? (if change-debug? timestamp dbg-ts)]))
@@ -39,22 +41,30 @@
     new-game-state))
 
 (def logical-dims [160 144])
-(def inputs {(int \W) Action/UP
-             (int \A) Action/LEFT
-             (int \S) Action/DOWN
-             (int \D) Action/RIGHT
-             (int \G) Action/DEBUG
+(def keymap {(int \W)     Action/UP
+             (int \A)     Action/LEFT
+             (int \S)     Action/DOWN
+             (int \D)     Action/RIGHT
+             (int \G)     Action/DEBUG
              (int \space) Action/INTERACT})
 
+(def buttonmap {GamepadButton/DPAD_UP    Action/UP
+                GamepadButton/DPAD_LEFT  Action/LEFT
+                GamepadButton/DPAD_DOWN  Action/DOWN
+                GamepadButton/DPAD_RIGHT Action/RIGHT
+                GamepadButton/A          Action/INTERACT
+                GamepadButton/GUIDE      Action/DEBUG})
+
 (defn -main []
-  (let [^Window window (Window. 800 600 "JRPG" inputs false)
+  (let [action-handler (ActionHandler. keymap buttonmap)
+        ^Window window (Window. 800 600 "JRPG" action-handler false)
         {vs "vertex.glsl" fs "fragment.glsl"} (res/load "vertex.glsl" "fragment.glsl")
         renderer (r/create-renderer window (String. ^bytes vs) (String. ^bytes fs) logical-dims)
 
         {:strs [floor-light wall-light dialog-bg]}
         (res/load-textures renderer true "floor-light" "wall-light" "dialog-bg")
 
-        cat-idle   ((res/load-animations renderer "cat") "idle")
+        cat-idle ((res/load-animations renderer "cat") "idle")
         girl-anims (map (res/load-animations renderer "girl")
                         ["idle" "walk-down" "walk-up" "walk-horizontal" "walk-horizontal"])
         grandma-idle ((res/load-animations renderer "grandma") "idle")
