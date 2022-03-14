@@ -6,14 +6,13 @@
    [com.github.funkschy.jrpg.engine.math.vector :refer [->Vec2 add]]
    [com.github.funkschy.jrpg.states :as sm])
   (:import
-   [com.github.funkschy.jrpg Action]
    [com.github.funkschy.jrpg.components Velocity Input InteractionHitbox Transform InteractionContent CurrentInteraction]))
 
 (def ^:private updates
-  {Action/UP    (->Vec2 0 -1)
-   Action/LEFT  (->Vec2 -1 0)
-   Action/RIGHT (->Vec2 1 0)
-   Action/DOWN  (->Vec2 0 1)})
+  {:action/up    (->Vec2 0 -1)
+   :action/left  (->Vec2 -1 0)
+   :action/right (->Vec2 1 0)
+   :action/down  (->Vec2 0 1)})
 
 (defsystem handle-movements
   [[input velocity] {:keys [inputs]} _]
@@ -31,7 +30,7 @@
 (defsystem handle-interactions
   [[{:keys [delta-sum] :as input} {:keys [content] :as interaction}] {:keys [inputs]} delta]
   [Input CurrentInteraction]
-  (if (and (> delta-sum interaction-cooldown) (inputs Action/INTERACT) content)
+  (if (and (> delta-sum interaction-cooldown) (inputs :action/interact) content)
     (let [updated (update interaction :content sm/update-state-machine)
           value (sm/current-state-data (:content updated))
           ongoing? (boolean value)]

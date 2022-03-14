@@ -6,6 +6,7 @@
    [com.github.funkschy.jrpg.engine.aabb :refer [->AABB]]
    [com.github.funkschy.jrpg.engine.animation :as a]
    [com.github.funkschy.jrpg.engine.ecs :as s]
+   [com.github.funkschy.jrpg.engine.input :refer [game-input-handler]]
    [com.github.funkschy.jrpg.engine.math.vector :refer [->Vec2]]
    [com.github.funkschy.jrpg.engine.render :as r]
    [com.github.funkschy.jrpg.graphics :as g]
@@ -14,9 +15,7 @@
    [com.github.funkschy.jrpg.resources :as res]
    [com.github.funkschy.jrpg.text :as t])
   (:import
-   (com.github.funkschy.jrpg Action)
-   (com.github.funkschy.jrpg ActionHandler)
-   (com.github.funkschy.jrpg.engine Window GamepadButton)
+   (com.github.funkschy.jrpg.engine Window)
    (org.lwjgl.opengl GL11)))
 
 (defrecord GameState [ecs renderer input-fn inputs debug? debug-enabled-timestamp])
@@ -31,7 +30,7 @@
 (defn- update-state [gamestate timestamp]
   (r/clear-screen (:renderer gamestate))
   (let [inputs ((:input-fn gamestate))
-        [should-debug? new-dbg-ts] (debug-state gamestate timestamp (inputs Action/DEBUG))
+        [should-debug? new-dbg-ts] (debug-state gamestate timestamp (inputs :action/debug))
         new-game-state (-> gamestate
                            (assoc :inputs inputs)
                            (update :ecs s/run-systems gamestate timestamp)
@@ -41,22 +40,22 @@
     new-game-state))
 
 (def logical-dims [160 144])
-(def keymap {(int \W)     Action/UP
-             (int \A)     Action/LEFT
-             (int \S)     Action/DOWN
-             (int \D)     Action/RIGHT
-             (int \G)     Action/DEBUG
-             (int \space) Action/INTERACT})
+(def keymap {(int \W)     :action/up
+             (int \A)     :action/left
+             (int \S)     :action/down
+             (int \D)     :action/right
+             (int \G)     :action/debug
+             (int \space) :action/interact})
 
-(def buttonmap {GamepadButton/DPAD_UP    Action/UP
-                GamepadButton/DPAD_LEFT  Action/LEFT
-                GamepadButton/DPAD_DOWN  Action/DOWN
-                GamepadButton/DPAD_RIGHT Action/RIGHT
-                GamepadButton/A          Action/INTERACT
-                GamepadButton/GUIDE      Action/DEBUG})
+(def buttonmap {:dpad-up    :action/up
+                :dpad-left  :action/left
+                :dpad-down  :action/down
+                :dpad-right :action/right
+                :A          :action/interact
+                :guide      :action/debug})
 
 (defn -main []
-  (let [action-handler (ActionHandler. keymap buttonmap)
+  (let [action-handler (game-input-handler keymap buttonmap)
         ^Window window (Window. 800 600 "JRPG" action-handler false)
         {vs "vertex.glsl" fs "fragment.glsl"} (res/load "vertex.glsl" "fragment.glsl")
         renderer (r/create-renderer window (String. ^bytes vs) (String. ^bytes fs) logical-dims)
